@@ -68,8 +68,76 @@ function dateLabel(iso) {
   return new Date(iso + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
+function MiniCalendar({ selected, onSelect, onClose }) {
+  const selDate = new Date(selected + "T12:00:00");
+  const [viewYear, setViewYear] = useState(selDate.getFullYear());
+  const [viewMonth, setViewMonth] = useState(selDate.getMonth());
+
+  const today = new Date(todayISO + "T12:00:00");
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const startOffset = (firstDay + 6) % 7; // Mon=0
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  const days = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl p-4 w-full max-w-xs" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 text-lg font-bold">‹</button>
+          <span className="text-sm font-semibold text-gray-800">{monthLabel}</span>
+          <button
+            onClick={nextMonth}
+            disabled={viewYear > today.getFullYear() || (viewYear === today.getFullYear() && viewMonth >= today.getMonth())}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 text-lg font-bold disabled:opacity-30"
+          >›</button>
+        </div>
+        <div className="grid grid-cols-7 mb-1">
+          {days.map(d => <div key={d} className="text-center text-[10px] text-gray-400 font-medium py-1">{d}</div>)}
+        </div>
+        <div className="grid grid-cols-7 gap-y-1">
+          {Array(startOffset).fill(null).map((_, i) => <div key={`e${i}`} />)}
+          {Array(daysInMonth).fill(null).map((_, i) => {
+            const day = i + 1;
+            const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            const isToday = iso === todayISO;
+            const isSel = iso === selected;
+            const isFuture = iso > todayISO;
+            return (
+              <button
+                key={day}
+                disabled={isFuture}
+                onClick={() => { onSelect(iso); onClose(); }}
+                className={`text-xs py-1.5 rounded-lg font-medium transition-colors ${
+                  isSel ? "bg-brand-500 text-white" :
+                  isToday ? "bg-brand-50 text-brand-600 font-bold" :
+                  isFuture ? "text-gray-200" :
+                  "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                {day}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [date, setDate] = useState(todayISO);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [whoop, setWhoop] = useState(null);
   const [weightData, setWeightData] = useState([]);
   const [whoopConnected, setWhoopConnected] = useState(null);
@@ -173,18 +241,31 @@ export default function Dashboard() {
     <div className="p-4 space-y-4 max-w-lg mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <button onClick={prevDay} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 text-lg">
+        <button onClick={prevDay} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 text-2xl font-light">
           ‹
         </button>
-        <h1 className="text-xl font-bold text-gray-900">{dateLabel(date)}</h1>
+        <button onClick={() => setCalendarOpen(true)} className="flex flex-col items-center">
+          <h1 className="text-xl font-bold text-gray-900">{dateLabel(date)}</h1>
+          {date !== todayISO && (
+            <span className="text-xs text-gray-400">{new Date(date + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
+          )}
+        </button>
         <button
           onClick={nextDay}
           disabled={date >= todayISO}
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 text-lg disabled:opacity-0"
+          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 text-2xl font-light disabled:opacity-0"
         >
           ›
         </button>
       </div>
+
+      {calendarOpen && (
+        <MiniCalendar
+          selected={date}
+          onSelect={setDate}
+          onClose={() => setCalendarOpen(false)}
+        />
+      )}
 
       {/* Whoop rings 2x2 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
