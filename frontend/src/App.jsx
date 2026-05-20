@@ -3,14 +3,11 @@ import Dashboard from "./components/Dashboard";
 import NutritionLog from "./components/NutritionLog";
 import Chat from "./components/Chat";
 import WorkoutLog from "./components/WorkoutLog";
-import Settings from "./components/Settings";
-
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: "📊" },
   { id: "nutrition", label: "Nutrition", icon: "🥗" },
   { id: "workouts", label: "Workouts", icon: "🏋️" },
   { id: "chat", label: "Chat", icon: "💬" },
-  { id: "settings", label: "Settings", icon: "⚙️" },
 ];
 
 export default function App() {
@@ -24,7 +21,6 @@ export default function App() {
         {activeTab === "nutrition" && <NutritionLog />}
         {activeTab === "workouts" && <WorkoutLog />}
         {activeTab === "chat" && <Chat />}
-        {activeTab === "settings" && <Settings />}
       </main>
 
       {/* Bottom tab bar */}
