@@ -122,6 +122,26 @@ class Workout(db.Model):
         }
 
 
+class UserProfile(db.Model):
+    __tablename__ = "user_profiles"
+
+    id = db.Column(db.String(36), primary_key=True, default=_uuid)
+    user_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, unique=True)
+    height_cm = db.Column(db.Float)
+    date_of_birth = db.Column(db.Date)
+    gender = db.Column(db.String(10))  # 'male' / 'female'
+    avg_daily_steps = db.Column(db.Integer, default=10000)
+    updated_at = db.Column(db.DateTime(timezone=True), default=_now, onupdate=_now)
+
+    def to_dict(self):
+        return {
+            "height_cm": self.height_cm,
+            "date_of_birth": self.date_of_birth.isoformat() if self.date_of_birth else None,
+            "gender": self.gender,
+            "avg_daily_steps": self.avg_daily_steps,
+        }
+
+
 class OAuthToken(db.Model):
     __tablename__ = "oauth_tokens"
 

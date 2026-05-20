@@ -24,6 +24,7 @@ def create_app(config_name=None):
     from app.routes.workouts import workouts_bp
     from app.routes.sync import sync_bp
     from app.routes.whoop_auth import whoop_bp
+    from app.routes.profile import profile_bp
 
     app.register_blueprint(chat_bp, url_prefix="/api")
     app.register_blueprint(nutrition_bp, url_prefix="/api")
@@ -31,6 +32,7 @@ def create_app(config_name=None):
     app.register_blueprint(workouts_bp, url_prefix="/api")
     app.register_blueprint(sync_bp, url_prefix="/api")
     app.register_blueprint(whoop_bp, url_prefix="/api")
+    app.register_blueprint(profile_bp, url_prefix="/api")
 
     @app.route("/health")
     def health():

@@ -5,10 +5,64 @@ from flask import current_app
 import anthropic
 
 from app import db
-from app.models import WhoopData, NutritionLog, WeightLog, Workout, ChatMessage
+from app.models import WhoopData, NutritionLog, WeightLog, Workout, ChatMessage, UserProfile
 
 MODEL = "claude-sonnet-4-6"
 MAX_HISTORY = 20  # previous messages sent for context
+
+
+def calculate_tdee(user_id: str, today: date) -> str:
+    profile = UserProfile.query.filter_by(user_id=user_id).first()
+    if not profile or not profile.height_cm or not profile.date_of_birth or not profile.gender:
+        return None
+
+    # Latest weight
+    latest_weight = (
+        WeightLog.query.filter_by(user_id=user_id)
+        .order_by(WeightLog.date.desc()).first()
+    )
+    weight_kg = latest_weight.weight_kg if latest_weight else 80
+
+    age = (today - profile.date_of_birth).days / 365.25
+
+    # Mifflin-St Jeor BMR
+    if profile.gender == "male":
+        bmr = 10 * weight_kg + 6.25 * profile.height_cm - 5 * age + 5
+    else:
+        bmr = 10 * weight_kg + 6.25 * profile.height_cm - 5 * age - 161
+
+    # NEAT: step calories (0.04 kcal/step baseline scaled to bodyweight vs 70kg reference)
+    steps = profile.avg_daily_steps or 10000
+    step_kcal = steps * 0.04 * (weight_kg / 70)
+
+    # TEF: thermic effect of food ~10% of BMR
+    tef = bmr * 0.10
+
+    # Today's workout calories from Garmin and Hevy
+    todays_workouts = Workout.query.filter_by(user_id=user_id, date=today).all()
+    workout_kcal = 0
+    workout_notes = []
+    for w in todays_workouts:
+        raw = w.raw_json or {}
+        if w.source == "garmin" and raw.get("calories"):
+            cal = raw["calories"]
+            workout_kcal += cal
+            workout_notes.append(f"{w.title} {cal} kcal (Garmin)")
+        elif w.source == "hevy" and w.duration_minutes:
+            # Strength training MET ~5, scaled to bodyweight
+            cal = round(5 * weight_kg * (w.duration_minutes / 60))
+            workout_kcal += cal
+            workout_notes.append(f"{w.title} ~{cal} kcal (Hevy estimate)")
+
+    tdee = round(bmr + step_kcal + tef + workout_kcal)
+    bmr_rounded = round(bmr)
+    step_rounded = round(step_kcal)
+
+    breakdown = f"BMR {bmr_rounded} + steps {step_rounded} + TEF {round(tef)}"
+    if workout_notes:
+        breakdown += " + " + " + ".join(workout_notes)
+
+    return f"~{tdee} kcal ({breakdown})"
 
 
 def build_context(user_id: str) -> str:
@@ -72,10 +126,14 @@ def build_context(user_id: str) -> str:
         workout_lines.append(f"{w.date} {w.title} ({dur}{detail})")
     workout_str = "\n".join(workout_lines) if workout_lines else "No recent workouts"
 
+    tdee_str = calculate_tdee(user_id, today)
+    tdee_line = f"Estimated TDEE today: {tdee_str}" if tdee_str else "TDEE: set up profile in Settings for TDEE tracking"
+
     return f"""Today: {today}
 Weight trend (7d): {weight_trend}
 Today's Whoop: {whoop_str}
 Today's nutrition so far: {nutrition_str}
+{tdee_line}
 Recent workouts: {workout_str}"""
 
 
