@@ -142,7 +142,7 @@ function MiniCalendar({ selected, onSelect, onClose }) {
 export default function Dashboard() {
   const [date, setDate] = useState(todayISO);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [historyTab, setHistoryTab] = useState(null);
   const [whoop, setWhoop] = useState(null);
   const [weightData, setWeightData] = useState([]);
   const [whoopConnected, setWhoopConnected] = useState(null);
@@ -236,7 +236,7 @@ export default function Dashboard() {
     }
   };
 
-  if (showHistory) return <WhoopHistory onBack={() => setShowHistory(false)} />;
+  if (historyTab) return <WhoopHistory onBack={() => setHistoryTab(null)} initialTab={historyTab} />;
 
   if (loading) {
     return <div className="flex items-center justify-center h-48 text-gray-400">Loading…</div>;
@@ -277,10 +277,10 @@ export default function Dashboard() {
       {/* Whoop rings 2x2 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <div className="grid grid-cols-2 gap-4">
-          <Ring value={whoop?.recovery_score} goal={100} label="Recovery" color={recoveryColor(whoop?.recovery_score)} unit="%" onClick={() => setShowHistory(true)} />
-          <Ring value={whoop?.sleep_score} goal={100} label="Sleep" color="#a78bfa" unit="%" onClick={() => setShowHistory(true)} />
-          <Ring value={whoop?.hrv_ms ? Math.round(whoop.hrv_ms) : null} goal={100} label="HRV (ms)" color="#60a5fa" showPct={false} unit="ms" onClick={() => setShowHistory(true)} />
-          <Ring value={whoop?.resting_hr} goal={80} label="Resting HR" color="#fb7185" inverse={true} showPct={false} unit="bpm" onClick={() => setShowHistory(true)} />
+          <Ring value={whoop?.recovery_score} goal={100} label="Recovery" color={recoveryColor(whoop?.recovery_score)} showPct={false} unit="%" onClick={() => setHistoryTab("recovery")} />
+          <Ring value={whoop?.sleep_score} goal={100} label="Sleep" color="#a78bfa" showPct={false} unit="%" onClick={() => setHistoryTab("sleep")} />
+          <Ring value={whoop?.hrv_ms ? Math.round(whoop.hrv_ms) : null} goal={100} label="HRV (ms)" color="#60a5fa" showPct={false} unit="ms" onClick={() => setHistoryTab("recovery")} />
+          <Ring value={whoop?.resting_hr} goal={80} label="Resting HR" color="#fb7185" inverse={true} showPct={false} unit="bpm" onClick={() => setHistoryTab("recovery")} />
         </div>
         <p className="text-center text-[10px] text-gray-300 mt-3">Tap a ring for history</p>
       </div>

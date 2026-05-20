@@ -98,7 +98,12 @@ def history():
         "sleep_score": r.sleep_score,
         "hrv_ms": round(r.hrv_ms, 1) if r.hrv_ms else None,
         "resting_hr": r.resting_hr,
+        "respiratory_rate": round(r.respiratory_rate, 1) if r.respiratory_rate else None,
         "sleep_duration_hours": round(r.sleep_duration_hours, 1) if r.sleep_duration_hours else None,
+        "sleep_needed_hours": round(r.sleep_needed_hours, 1) if r.sleep_needed_hours else None,
+        "sleep_consistency_pct": r.sleep_consistency_pct,
+        "sleep_efficiency_pct": r.sleep_efficiency_pct,
+        "sleep_disturbances": r.sleep_disturbances,
     } for r in records])
 
 

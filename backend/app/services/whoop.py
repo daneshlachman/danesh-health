@@ -183,6 +183,7 @@ def sync(user_id: str) -> dict:
             "recovery_score": score.get("recovery_score"),
             "hrv_ms": score.get("hrv_rmssd_milli"),
             "resting_hr": score.get("resting_heart_rate"),
+            "respiratory_rate": score.get("respiratory_rate"),
             "raw": r,
         })
 
@@ -199,10 +200,20 @@ def sync(user_id: str) -> dict:
         end_dt = datetime.fromisoformat(s["end"].replace("Z", "+00:00"))
         duration_hours = (end_dt - start_dt).total_seconds() / 3600
 
+        sleep_needed = score.get("sleep_needed", {})
+        needed_ms = (
+            (sleep_needed.get("baseline_milli") or 0) +
+            (sleep_needed.get("need_from_sleep_debt_milli") or 0) +
+            (sleep_needed.get("need_from_strain_milli") or 0)
+        )
         day_map.setdefault(d, {})
         day_map[d].update({
             "sleep_score": score.get("sleep_performance_percentage"),
             "sleep_duration_hours": round(duration_hours, 2),
+            "sleep_needed_hours": round(needed_ms / 3_600_000, 2) if needed_ms else None,
+            "sleep_consistency_pct": score.get("sleep_consistency_percentage"),
+            "sleep_efficiency_pct": score.get("sleep_efficiency_percentage"),
+            "sleep_disturbances": score.get("disturbance_count"),
         })
 
     # Upsert into whoop_data
@@ -222,8 +233,13 @@ def sync(user_id: str) -> dict:
                 recovery_score=values.get("recovery_score"),
                 hrv_ms=values.get("hrv_ms"),
                 resting_hr=values.get("resting_hr"),
+                respiratory_rate=values.get("respiratory_rate"),
                 sleep_score=values.get("sleep_score"),
                 sleep_duration_hours=values.get("sleep_duration_hours"),
+                sleep_needed_hours=values.get("sleep_needed_hours"),
+                sleep_consistency_pct=values.get("sleep_consistency_pct"),
+                sleep_efficiency_pct=values.get("sleep_efficiency_pct"),
+                sleep_disturbances=values.get("sleep_disturbances"),
                 raw_json=values.get("raw"),
             )
             db.session.add(existing)

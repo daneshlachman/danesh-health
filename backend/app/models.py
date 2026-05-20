@@ -81,8 +81,13 @@ class WhoopData(db.Model):
     recovery_score = db.Column(db.Integer)
     hrv_ms = db.Column(db.Float)
     resting_hr = db.Column(db.Integer)
+    respiratory_rate = db.Column(db.Float)
     sleep_score = db.Column(db.Integer)
     sleep_duration_hours = db.Column(db.Float)
+    sleep_needed_hours = db.Column(db.Float)
+    sleep_consistency_pct = db.Column(db.Integer)
+    sleep_efficiency_pct = db.Column(db.Integer)
+    sleep_disturbances = db.Column(db.Integer)
     raw_json = db.Column(db.JSON)
     created_at = db.Column(db.DateTime(timezone=True), default=_now)
 
@@ -93,8 +98,13 @@ class WhoopData(db.Model):
             "recovery_score": self.recovery_score,
             "hrv_ms": self.hrv_ms,
             "resting_hr": self.resting_hr,
+            "respiratory_rate": self.respiratory_rate,
             "sleep_score": self.sleep_score,
             "sleep_duration_hours": self.sleep_duration_hours,
+            "sleep_needed_hours": self.sleep_needed_hours,
+            "sleep_consistency_pct": self.sleep_consistency_pct,
+            "sleep_efficiency_pct": self.sleep_efficiency_pct,
+            "sleep_disturbances": self.sleep_disturbances,
             "created_at": self.created_at.isoformat(),
         }
 
