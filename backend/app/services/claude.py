@@ -1,5 +1,6 @@
 import json
 import re
+import requests as http_requests
 from datetime import date, timedelta
 from flask import current_app
 import anthropic
@@ -122,6 +123,58 @@ Today's nutrition so far: {nutrition_str}
 Recent workouts: {workout_str}"""
 
 
+PRODUCT_SEARCH_TOOL = {
+    "name": "search_product_nutrition",
+    "description": (
+        "Search the Open Food Facts database for nutritional info of a packaged food product. "
+        "Use this whenever the user mentions a specific branded or packaged product and you don't know the exact macros. "
+        "Returns kcal, protein, carbs and fat per 100g for the best matching products."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Product name to search, e.g. 'Albert Heijn linzenwafels paprika' or 'Quaker havermout'"
+            }
+        },
+        "required": ["query"]
+    }
+}
+
+
+def _search_product(query: str) -> str:
+    try:
+        r = http_requests.get(
+            "https://world.openfoodfacts.org/cgi/search.pl",
+            params={"search_terms": query, "search_simple": 1, "action": "process",
+                    "json": 1, "page_size": 3, "lc": "nl", "cc": "nl"},
+            timeout=6
+        )
+        products = r.json().get("products", [])
+        if not products:
+            return json.dumps({"error": "Product not found in database"})
+
+        results = []
+        for p in products[:3]:
+            n = p.get("nutriments", {})
+            kcal = n.get("energy-kcal_100g") or (n.get("energy_100g", 0) / 4.184)
+            results.append({
+                "name": p.get("product_name", "?"),
+                "brand": p.get("brands", ""),
+                "serving_size": p.get("serving_size", ""),
+                "per_100g": {
+                    "kcal": round(kcal) if kcal else None,
+                    "protein_g": n.get("proteins_100g"),
+                    "carbs_g": n.get("carbohydrates_100g"),
+                    "fat_g": n.get("fat_100g"),
+                }
+            })
+        return json.dumps({"products": results})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
 def _get_history(user_id: str) -> list[dict]:
     messages = (
         ChatMessage.query
@@ -151,7 +204,7 @@ Nutrition logging rules (follow strictly):
 - One JSON entry per individual food item or drink — never combine multiple foods into one entry.
 - Use correct meal_type: breakfast / lunch / dinner / snack.
 - Use realistic Dutch/European nutritional values (NEVO database standards).
-- For packaged products the user mentions by brand, use the actual product's macros.
+- For packaged products: use search_product_nutrition tool to get exact macros, then log based on the quantity eaten.
 - Calories must match: roughly 4 kcal/g protein, 4 kcal/g carbs, 9 kcal/g fat.
 - If the user corrects a previous log, only log the correction — never re-log already saved items.
 - If food was not eaten (e.g. "I'm planning to eat..."), do NOT log it.
@@ -161,14 +214,30 @@ Respond in the same language the user writes in. Be concise and data-driven."""
     history = _get_history(user_id)
     messages = history + [{"role": "user", "content": user_message}]
 
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=1024,
-        system=system_prompt,
-        messages=messages,
-    )
+    # Tool use loop — Claude may call search_product_nutrition before responding
+    while True:
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=1024,
+            system=system_prompt,
+            tools=[PRODUCT_SEARCH_TOOL],
+            messages=messages,
+        )
 
-    return response.content[0].text
+        if response.stop_reason == "tool_use":
+            tool_block = next(b for b in response.content if b.type == "tool_use")
+            tool_result = _search_product(tool_block.input["query"])
+            messages.append({"role": "assistant", "content": response.content})
+            messages.append({
+                "role": "user",
+                "content": [{
+                    "type": "tool_result",
+                    "tool_use_id": tool_block.id,
+                    "content": tool_result,
+                }]
+            })
+        else:
+            return next(b.text for b in response.content if b.type == "text")
 
 
 def extract_nutrition(user_id: str, assistant_reply: str) -> bool:
