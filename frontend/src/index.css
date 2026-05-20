@@ -2,10 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Safe area insets for iPhone notch + home bar */
+/* Safe area insets — top only on body, bottom handled by nav bar */
 body {
   padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Scrollable chat area doesn't cause page to shift */
