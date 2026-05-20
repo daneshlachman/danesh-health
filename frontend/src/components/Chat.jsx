@@ -73,7 +73,7 @@ function Message({ role, content, nutritionLogged }) {
         )}
       </div>
       {nutritionLogged && (
-        <span className="text-xs text-green-600 mt-1 px-1">✓ Gelogd in Nutrition</span>
+        <span className="text-xs text-green-600 mt-1 px-1">✓ Logged in Nutrition</span>
       )}
     </div>
   );
@@ -125,7 +125,7 @@ export default function Chat() {
         ...prev,
         {
           role: "assistant",
-          content: "Er ging iets mis. Probeer het opnieuw.",
+          content: "Something went wrong. Please try again.",
           id: Date.now() + 1,
         },
       ]);
@@ -147,9 +147,9 @@ export default function Chat() {
         {messages.length === 0 && (
           <div className="text-center text-gray-400 text-sm mt-16">
             <p className="text-3xl mb-3">💬</p>
-            <p className="font-medium text-gray-500">Chat met je health coach.</p>
-            <p className="mt-2">Vertel wat je hebt gegeten, hoe je je voelt,</p>
-            <p>of vraag iets over je data.</p>
+            <p className="font-medium text-gray-500">Chat with your health coach.</p>
+            <p className="mt-2">Tell Claude what you ate, how you feel,</p>
+            <p>or ask anything about your data.</p>
           </div>
         )}
         {messages.map((m, i) => (
@@ -158,7 +158,7 @@ export default function Chat() {
         {sending && (
           <div className="flex justify-start mb-3">
             <div className="bg-white shadow-sm rounded-2xl rounded-bl-sm px-4 py-2.5 text-gray-400 text-sm">
-              Aan het nadenken…
+              Thinking…
             </div>
           </div>
         )}
@@ -171,7 +171,7 @@ export default function Chat() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
-          placeholder="Vertel wat je hebt gegeten of stel een vraag…"
+          placeholder="Tell Claude what you ate or ask a question…"
           className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           style={{ maxHeight: "120px" }}
         />
@@ -180,7 +180,7 @@ export default function Chat() {
           disabled={!input.trim() || sending}
           className="bg-brand-500 text-white rounded-xl px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-brand-600 transition-colors"
         >
-          Stuur
+          Send
         </button>
       </div>
     </div>

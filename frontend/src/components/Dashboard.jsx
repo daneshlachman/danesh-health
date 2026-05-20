@@ -28,14 +28,35 @@ function recoveryColor(score) {
   return "text-red-500";
 }
 
+const PERIODS = [
+  { label: "1W", days: 7 },
+  { label: "1M", days: 30 },
+  { label: "3M", days: 90 },
+  { label: "6M", days: 180 },
+  { label: "1Y", days: 365 },
+];
+
 export default function Dashboard() {
   const [whoop, setWhoop] = useState(null);
   const [weightData, setWeightData] = useState([]);
   const [whoopConnected, setWhoopConnected] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [weightDays, setWeightDays] = useState(30);
 
-  const AUTO_SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
+  const AUTO_SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000;
+
+  const fetchWeight = (days) => {
+    fetch(`/api/weight?days=${days}`)
+      .then((r) => r.json())
+      .then((weights) => setWeightData(weights.map((w) => ({ date: w.date.slice(5), kg: w.weight_kg }))))
+      .catch(console.error);
+  };
+
+  const handlePeriod = (days) => {
+    setWeightDays(days);
+    fetchWeight(days);
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -46,7 +67,7 @@ export default function Dashboard() {
     }
 
     Promise.all([
-      fetch("/api/weight?days=30").then((r) => r.json()),
+      fetch(`/api/weight?days=${weightDays}`).then((r) => r.json()),
       fetch("/api/whoop/status").then((r) => r.json()),
     ])
       .then(([weights, status]) => {
@@ -151,12 +172,27 @@ export default function Dashboard() {
 
       {/* Weight chart */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">
-          Weight (30 days)
-        </p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Weight</p>
+          <div className="flex gap-1">
+            {PERIODS.map(({ label, days }) => (
+              <button
+                key={days}
+                onClick={() => handlePeriod(days)}
+                className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${
+                  weightDays === days
+                    ? "bg-brand-500 text-white"
+                    : "text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         {weightData.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-6">
-            No weight data yet — sync Whoop or log manually.
+            No weight data for this period.
           </p>
         ) : (
           <ResponsiveContainer width="100%" height={180}>

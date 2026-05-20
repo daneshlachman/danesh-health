@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 const GOALS = { calories: 2400, protein_g: 180, carbs_g: 240, fat_g: 80 };
 const MEAL_ORDER = ["breakfast", "lunch", "dinner", "snack"];
-const MEAL_LABELS = { breakfast: "Ontbijt", lunch: "Lunch", dinner: "Diner", snack: "Snack" };
+const MEAL_LABELS = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack" };
 
 function Ring({ value, goal, label, color, size = 80 }) {
   const r = (size - 10) / 2;
@@ -62,9 +62,9 @@ function MealSection({ meal, entries, onDelete }) {
               <p className="text-sm text-gray-800">{entry.description}</p>
               <div className="flex gap-3 mt-1 flex-wrap">
                 <span className="text-xs font-medium text-gray-600">{Math.round(entry.calories ?? 0)} kcal</span>
-                <span className="text-xs text-blue-500">E {Math.round(entry.protein_g ?? 0)}g</span>
-                <span className="text-xs text-amber-500">K {Math.round(entry.carbs_g ?? 0)}g</span>
-                <span className="text-xs text-rose-500">V {Math.round(entry.fat_g ?? 0)}g</span>
+                <span className="text-xs text-blue-500">P {Math.round(entry.protein_g ?? 0)}g</span>
+                <span className="text-xs text-amber-500">C {Math.round(entry.carbs_g ?? 0)}g</span>
+                <span className="text-xs text-rose-500">F {Math.round(entry.fat_g ?? 0)}g</span>
               </div>
             </div>
             <button
@@ -79,11 +79,11 @@ function MealSection({ meal, entries, onDelete }) {
 
       {entries.length > 1 && (
         <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100 flex gap-4">
-          <span className="text-xs font-semibold text-gray-700">Totaal</span>
+          <span className="text-xs font-semibold text-gray-700">Total</span>
           <span className="text-xs font-semibold text-gray-700">{Math.round(total.calories)} kcal</span>
-          <span className="text-xs text-blue-600 font-medium">E {Math.round(total.protein_g)}g</span>
-          <span className="text-xs text-amber-600 font-medium">K {Math.round(total.carbs_g)}g</span>
-          <span className="text-xs text-rose-600 font-medium">V {Math.round(total.fat_g)}g</span>
+          <span className="text-xs text-blue-600 font-medium">P {Math.round(total.protein_g)}g</span>
+          <span className="text-xs text-amber-600 font-medium">C {Math.round(total.carbs_g)}g</span>
+          <span className="text-xs text-rose-600 font-medium">F {Math.round(total.fat_g)}g</span>
         </div>
       )}
     </div>
@@ -153,16 +153,16 @@ export default function NutritionLog() {
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-2xl font-bold text-gray-900 leading-none">{Math.round(totals.calories)}</span>
               <span className="text-xs text-gray-400 mt-0.5">kcal</span>
-              <span className="text-[10px] text-gray-300 leading-none">van {GOALS.calories}</span>
+              <span className="text-[10px] text-gray-300 leading-none">of {GOALS.calories}</span>
             </div>
           </div>
         </div>
 
         {/* Macro rings row */}
         <div className="flex justify-around w-full">
-          <Ring value={totals.protein_g} goal={GOALS.protein_g} label="Eiwit" color="#60a5fa" size={76} />
-          <Ring value={totals.carbs_g} goal={GOALS.carbs_g} label="Koolh." color="#fbbf24" size={76} />
-          <Ring value={totals.fat_g} goal={GOALS.fat_g} label="Vet" color="#fb7185" size={76} />
+          <Ring value={totals.protein_g} goal={GOALS.protein_g} label="Protein" color="#60a5fa" size={76} />
+          <Ring value={totals.carbs_g} goal={GOALS.carbs_g} label="Carbs" color="#fbbf24" size={76} />
+          <Ring value={totals.fat_g} goal={GOALS.fat_g} label="Fat" color="#fb7185" size={76} />
         </div>
       </div>
 
@@ -182,7 +182,7 @@ export default function NutritionLog() {
 
       {!loading && logs.length === 0 && (
         <p className="text-center text-gray-400 py-8 text-sm">
-          Nog niets gelogd. Vertel Claude wat je hebt gegeten in de Chat tab.
+          Nothing logged yet. Tell Claude what you ate in the Chat tab.
         </p>
       )}
     </div>
