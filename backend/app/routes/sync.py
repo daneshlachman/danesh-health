@@ -1,0 +1,26 @@
+from flask import Blueprint, jsonify
+from app.routes.chat import _ensure_user
+from app.services import whoop, garmin, hevy
+
+sync_bp = Blueprint("sync", __name__)
+
+
+@sync_bp.route("/sync/whoop", methods=["POST"])
+def sync_whoop():
+    user = _ensure_user()
+    result = whoop.sync(user.id)
+    return jsonify(result)
+
+
+@sync_bp.route("/sync/garmin", methods=["POST"])
+def sync_garmin():
+    user = _ensure_user()
+    result = garmin.sync(user.id)
+    return jsonify(result)
+
+
+@sync_bp.route("/sync/hevy", methods=["POST"])
+def sync_hevy():
+    user = _ensure_user()
+    result = hevy.sync(user.id)
+    return jsonify(result)

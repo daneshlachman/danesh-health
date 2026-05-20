@@ -1,0 +1,89 @@
+"""Whoop OAuth routes: /api/whoop/authorize and /api/whoop/callback."""
+from flask import Blueprint, redirect, request, jsonify, current_app
+from app.routes.chat import _ensure_user
+from app.services import whoop
+
+whoop_bp = Blueprint("whoop", __name__)
+
+FRONTEND_URL = "http://localhost:5173"
+
+
+@whoop_bp.route("/whoop/authorize")
+def authorize():
+    user = _ensure_user()
+    url = whoop.get_auth_url(
+        redirect_uri=current_app.config["WHOOP_REDIRECT_URI"],
+        client_id=current_app.config["WHOOP_CLIENT_ID"],
+    )
+    return redirect(url)
+
+
+@whoop_bp.route("/whoop/callback")
+def callback():
+    code = request.args.get("code")
+    error = request.args.get("error")
+
+    if error or not code:
+        return redirect(f"{FRONTEND_URL}?whoop_error=1")
+
+    user = _ensure_user()
+    try:
+        whoop.exchange_code(code, user.id)
+    except Exception as e:
+        current_app.logger.error(f"Whoop token exchange failed: {e}")
+        return redirect(f"{FRONTEND_URL}?whoop_error=1")
+
+    return redirect(f"{FRONTEND_URL}?whoop_connected=1")
+
+
+@whoop_bp.route("/whoop/status")
+def status():
+    user = _ensure_user()
+    connected = whoop.is_connected(user.id)
+    return jsonify({"connected": connected})
+
+
+@whoop_bp.route("/whoop/disconnect", methods=["POST"])
+def disconnect():
+    from app.models import OAuthToken
+    user = _ensure_user()
+    OAuthToken.query.filter_by(user_id=user.id, provider="whoop").delete()
+    db.session.commit()
+    return jsonify({"status": "ok"})
+
+
+@whoop_bp.route("/whoop/debug")
+def debug():
+    from app.services.whoop import _get_valid_token
+    import requests
+    user = _ensure_user()
+    token = _get_valid_token(user.id)
+    if not token:
+        return jsonify({"error": "no token"})
+    results = {}
+    urls = [
+        "https://api.prod.whoop.com/developer/v2/recovery",
+        "https://api.prod.whoop.com/developer/v2/activity/sleep",
+        "https://api.prod.whoop.com/developer/v2/sleep",
+        "https://api.prod.whoop.com/developer/v2/body/measurement",
+        "https://api.prod.whoop.com/developer/v2/user/profile/basic",
+        "https://api.prod.whoop.com/developer/v2/profile",
+    ]
+    for url in urls:
+        try:
+            r = requests.get(url, headers={"Authorization": f"Bearer {token}"}, params={"limit": 1})
+            results[url] = {"status": r.status_code, "body": r.text[:200]}
+        except Exception as e:
+            results[url] = {"error": str(e)}
+    return jsonify(results)
+
+
+@whoop_bp.route("/whoop/today")
+def today():
+    from app.models import WhoopData
+    from datetime import date
+    user = _ensure_user()
+    record = WhoopData.query.filter_by(user_id=user.id, date=date.today()).first()
+    if not record:
+        return jsonify({"error": "no data"})
+    return jsonify(record.to_dict())

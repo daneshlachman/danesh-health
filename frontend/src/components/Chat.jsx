@@ -1,0 +1,188 @@
+import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+function cleanReply(text) {
+  return text
+    .replace(/```(?:json)?\s*\[[\s\S]*?"log_nutrition"[\s\S]*?\]\s*```/g, "")
+    .replace(/```(?:json)?\s*\{[\s\S]*?"log_nutrition"[\s\S]*?\}\s*```/g, "")
+    .replace(/\[[\s\S]*?"log_nutrition"[\s\S]*?\]/g, "")
+    .replace(/\{[^{}]*"log_nutrition"\s*:\s*true[^{}]*\}/g, "")
+    .trim();
+}
+
+function Message({ role, content, nutritionLogged }) {
+  const isUser = role === "user";
+  const display = isUser ? content : cleanReply(content);
+
+  return (
+    <div className={`flex flex-col ${isUser ? "items-end" : "items-start"} mb-4`}>
+      <div
+        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+          isUser
+            ? "bg-brand-500 text-white rounded-br-sm"
+            : "bg-white text-gray-800 shadow-sm rounded-bl-sm"
+        }`}
+      >
+        {isUser ? (
+          <p className="whitespace-pre-wrap">{display}</p>
+        ) : (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+              em: ({ children }) => <em className="italic">{children}</em>,
+              ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>,
+              li: ({ children }) => <li className="text-sm">{children}</li>,
+              table: ({ children }) => (
+                <div className="overflow-x-auto my-2">
+                  <table className="min-w-full text-xs border-collapse">{children}</table>
+                </div>
+              ),
+              thead: ({ children }) => <thead className="bg-gray-50">{children}</thead>,
+              th: ({ children }) => (
+                <th className="border border-gray-200 px-3 py-1.5 text-left font-semibold text-gray-700">
+                  {children}
+                </th>
+              ),
+              td: ({ children }) => (
+                <td className="border border-gray-200 px-3 py-1.5 text-gray-600">{children}</td>
+              ),
+              tr: ({ children }) => <tr className="even:bg-gray-50">{children}</tr>,
+              code: ({ inline, children }) =>
+                inline ? (
+                  <code className="bg-gray-100 text-gray-800 rounded px-1 py-0.5 text-xs font-mono">
+                    {children}
+                  </code>
+                ) : (
+                  <pre className="bg-gray-100 rounded-lg p-3 overflow-x-auto my-2">
+                    <code className="text-xs font-mono text-gray-800">{children}</code>
+                  </pre>
+                ),
+              blockquote: ({ children }) => (
+                <blockquote className="border-l-2 border-gray-300 pl-3 text-gray-500 my-2">
+                  {children}
+                </blockquote>
+              ),
+            }}
+          >
+            {display}
+          </ReactMarkdown>
+        )}
+      </div>
+      {nutritionLogged && (
+        <span className="text-xs text-green-600 mt-1 px-1">✓ Gelogd in Nutrition</span>
+      )}
+    </div>
+  );
+}
+
+export default function Chat() {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    fetch("/api/chat/history")
+      .then((r) => r.json())
+      .then(setMessages)
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || sending) return;
+
+    setInput("");
+    setSending(true);
+    setMessages((prev) => [...prev, { role: "user", content: text, id: Date.now() }]);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+      const data = await res.json();
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: data.message,
+          nutritionLogged: data.nutrition_logged,
+          id: Date.now() + 1,
+        },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Er ging iets mis. Probeer het opnieuw.",
+          id: Date.now() + 1,
+        },
+      ]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleKey = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full max-w-lg mx-auto">
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        {messages.length === 0 && (
+          <div className="text-center text-gray-400 text-sm mt-16">
+            <p className="text-3xl mb-3">💬</p>
+            <p className="font-medium text-gray-500">Chat met je health coach.</p>
+            <p className="mt-2">Vertel wat je hebt gegeten, hoe je je voelt,</p>
+            <p>of vraag iets over je data.</p>
+          </div>
+        )}
+        {messages.map((m, i) => (
+          <Message key={m.id ?? i} role={m.role} content={m.content} nutritionLogged={m.nutritionLogged} />
+        ))}
+        {sending && (
+          <div className="flex justify-start mb-3">
+            <div className="bg-white shadow-sm rounded-2xl rounded-bl-sm px-4 py-2.5 text-gray-400 text-sm">
+              Aan het nadenken…
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="border-t border-gray-100 bg-white px-4 py-3 flex gap-2">
+        <textarea
+          rows={1}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKey}
+          placeholder="Vertel wat je hebt gegeten of stel een vraag…"
+          className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+          style={{ maxHeight: "120px" }}
+        />
+        <button
+          onClick={send}
+          disabled={!input.trim() || sending}
+          className="bg-brand-500 text-white rounded-xl px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-brand-600 transition-colors"
+        >
+          Stuur
+        </button>
+      </div>
+    </div>
+  );
+}
