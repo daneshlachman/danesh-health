@@ -1,41 +1,57 @@
-from flask import Blueprint, request, jsonify
-from datetime import date as date_type
+from flask import Blueprint, jsonify
+from datetime import date, datetime, timezone
 
-from app import db
-from app.models import UserProfile, User
+from app.models import WeightLog, Workout
 
 profile_bp = Blueprint("profile", __name__)
 
 USER_ID = "00000000-0000-0000-0000-000000000001"
 
-
-def _get_or_create_profile():
-    profile = UserProfile.query.filter_by(user_id=USER_ID).first()
-    if not profile:
-        profile = UserProfile(user_id=USER_ID)
-        db.session.add(profile)
-        db.session.commit()
-    return profile
+# Hardcoded user profile
+HEIGHT_CM = 192
+DATE_OF_BIRTH = date(1999, 10, 3)
+AVG_DAILY_STEPS = 10000
 
 
-@profile_bp.route("/profile", methods=["GET"])
-def get_profile():
-    return jsonify(_get_or_create_profile().to_dict())
+@profile_bp.route("/tdee/today", methods=["GET"])
+def tdee_today():
+    today = date.today()
 
+    latest_weight = (
+        WeightLog.query.filter_by(user_id=USER_ID)
+        .order_by(WeightLog.date.desc()).first()
+    )
+    weight_kg = latest_weight.weight_kg if latest_weight else 88
 
-@profile_bp.route("/profile", methods=["POST"])
-def save_profile():
-    data = request.get_json()
-    profile = _get_or_create_profile()
+    age = (today - DATE_OF_BIRTH).days / 365.25
+    bmr = 10 * weight_kg + 6.25 * HEIGHT_CM - 5 * age + 5
+    step_kcal = AVG_DAILY_STEPS * 0.04 * (weight_kg / 70)
+    tef = bmr * 0.10
+    passive_total = bmr + step_kcal + tef
 
-    if "height_cm" in data:
-        profile.height_cm = data["height_cm"]
-    if "date_of_birth" in data and data["date_of_birth"]:
-        profile.date_of_birth = date_type.fromisoformat(data["date_of_birth"])
-    if "gender" in data:
-        profile.gender = data["gender"]
-    if "avg_daily_steps" in data:
-        profile.avg_daily_steps = data["avg_daily_steps"]
+    # Workout calories today
+    todays_workouts = Workout.query.filter_by(user_id=USER_ID, date=today).all()
+    workout_kcal = 0
+    for w in todays_workouts:
+        raw = w.raw_json or {}
+        if w.source == "garmin" and raw.get("calories"):
+            workout_kcal += raw["calories"]
+        elif w.source == "hevy" and w.duration_minutes:
+            workout_kcal += round(5 * weight_kg * (w.duration_minutes / 60))
 
-    db.session.commit()
-    return jsonify(profile.to_dict())
+    tdee = round(passive_total + workout_kcal)
+
+    # Time-based burn: passive calories scale linearly through the day
+    now = datetime.now(timezone.utc).astimezone()
+    minutes_elapsed = now.hour * 60 + now.minute
+    time_fraction = minutes_elapsed / (24 * 60)
+    burned_now = round(time_fraction * passive_total + workout_kcal)
+
+    return jsonify({
+        "tdee": tdee,
+        "burned_now": burned_now,
+        "bmr": round(bmr),
+        "step_kcal": round(step_kcal),
+        "workout_kcal": round(workout_kcal),
+        "weight_kg": weight_kg,
+    })
