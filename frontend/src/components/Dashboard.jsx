@@ -52,7 +52,24 @@ function recoveryColor(score) {
   return "#ef4444";
 }
 
+const toLocalISO = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+const todayISO = toLocalISO(new Date());
+
+function dateLabel(iso) {
+  if (iso === todayISO) return "Today";
+  const yesterday = toLocalISO(new Date(Date.now() - 86400000));
+  if (iso === yesterday) return "Yesterday";
+  return new Date(iso + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
 export default function Dashboard() {
+  const [date, setDate] = useState(todayISO);
   const [whoop, setWhoop] = useState(null);
   const [weightData, setWeightData] = useState([]);
   const [whoopConnected, setWhoopConnected] = useState(null);
@@ -62,6 +79,18 @@ export default function Dashboard() {
   const [tdee, setTdee] = useState(null);
 
   const AUTO_SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000;
+
+  const prevDay = () => {
+    const d = new Date(date + "T12:00:00");
+    d.setDate(d.getDate() - 1);
+    setDate(toLocalISO(d));
+  };
+
+  const nextDay = () => {
+    const d = new Date(date + "T12:00:00");
+    d.setDate(d.getDate() + 1);
+    setDate(toLocalISO(d));
+  };
 
   const fetchWeight = (days) => {
     fetch(`/api/weight?days=${days}`)
@@ -75,6 +104,19 @@ export default function Dashboard() {
     fetchWeight(days);
   };
 
+  // Reload whoop + tdee when date changes
+  useEffect(() => {
+    setWhoop(null);
+    setTdee(null);
+    Promise.all([
+      fetch(`/api/whoop/today?date=${date}`).then((r) => r.json()),
+      fetch(`/api/tdee/today?date=${date}`).then((r) => r.json()),
+    ]).then(([whoopData, tdeeData]) => {
+      if (whoopData && !whoopData.error) setWhoop(whoopData);
+      setTdee(tdeeData);
+    }).catch(console.error);
+  }, [date]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("whoop_connected")) {
@@ -86,13 +128,10 @@ export default function Dashboard() {
     Promise.all([
       fetch(`/api/weight?days=${weightDays}`).then((r) => r.json()),
       fetch("/api/whoop/status").then((r) => r.json()),
-      fetch("/api/tdee/today").then((r) => r.json()),
     ])
-      .then(([weights, status, tdeeData]) => {
+      .then(([weights, status]) => {
         setWeightData(weights.map((w) => ({ date: w.date.slice(5), kg: w.weight_kg })));
         setWhoopConnected(status.connected);
-        setTdee(tdeeData);
-
         if (status.connected) {
           const lastSync = parseInt(localStorage.getItem("lastWhoopSync") || "0");
           if (Date.now() - lastSync > AUTO_SYNC_INTERVAL_MS) triggerSync();
@@ -100,11 +139,6 @@ export default function Dashboard() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-
-    fetch("/api/whoop/today")
-      .then((r) => r.json())
-      .then((d) => { if (d && !d.error) setWhoop(d); })
-      .catch(() => {});
   }, []);
 
   const triggerSync = async () => {
@@ -138,7 +172,19 @@ export default function Dashboard() {
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
       {/* Header */}
-      <h1 className="text-xl font-bold text-gray-900">Today</h1>
+      <div className="flex items-center justify-between">
+        <button onClick={prevDay} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 text-lg">
+          ‹
+        </button>
+        <h1 className="text-xl font-bold text-gray-900">{dateLabel(date)}</h1>
+        <button
+          onClick={nextDay}
+          disabled={date >= todayISO}
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 text-lg disabled:opacity-0"
+        >
+          ›
+        </button>
+      </div>
 
       {/* Whoop rings 2x2 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">

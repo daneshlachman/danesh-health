@@ -83,7 +83,9 @@ def today():
     from app.models import WhoopData
     from datetime import date
     user = _ensure_user()
-    record = WhoopData.query.filter_by(user_id=user.id, date=date.today()).first()
+    date_str = request.args.get("date")
+    target = date.fromisoformat(date_str) if date_str else date.today()
+    record = WhoopData.query.filter_by(user_id=user.id, date=target).first()
     if not record:
         return jsonify({"error": "no data"})
     return jsonify(record.to_dict())

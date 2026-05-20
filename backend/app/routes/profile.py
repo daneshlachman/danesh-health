@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from datetime import date, datetime, timezone
 
 from app.models import WeightLog, Workout, NutritionLog
@@ -15,7 +15,8 @@ AVG_DAILY_STEPS = 10000
 
 @profile_bp.route("/tdee/today", methods=["GET"])
 def tdee_today():
-    today = date.today()
+    date_str = request.args.get("date")
+    today = date.fromisoformat(date_str) if date_str else date.today()
 
     latest_weight = (
         WeightLog.query.filter_by(user_id=USER_ID)
