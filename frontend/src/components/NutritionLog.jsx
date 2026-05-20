@@ -57,16 +57,16 @@ function MealSection({ meal, entries, onDelete }) {
 
       <ul className="divide-y divide-gray-50">
         {entries.map((entry) => (
-          <li key={entry.id} className="flex items-center gap-2 px-4 py-2.5">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-800">{entry.description}</p>
-              <div className="flex gap-3 mt-0.5 flex-wrap">
+          <li key={entry.id} className="flex items-center gap-3 px-4 py-2.5">
+            <p className="flex-1 min-w-0 text-sm text-gray-800">{entry.description}</p>
+            <div className="text-right shrink-0">
+              <div className="flex gap-2 justify-end">
                 <span className="text-xs text-blue-500">P {Math.round(entry.protein_g ?? 0)}g</span>
                 <span className="text-xs text-amber-500">C {Math.round(entry.carbs_g ?? 0)}g</span>
                 <span className="text-xs text-rose-500">F {Math.round(entry.fat_g ?? 0)}g</span>
               </div>
+              <span className="text-xs font-medium text-gray-600">{Math.round(entry.calories ?? 0)} kcal</span>
             </div>
-            <span className="text-xs font-medium text-gray-600 shrink-0">{Math.round(entry.calories ?? 0)} kcal</span>
             <button
               onClick={() => onDelete(entry.id)}
               className="text-gray-300 hover:text-red-400 text-base leading-none shrink-0"
