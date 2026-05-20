@@ -139,29 +139,30 @@ export default function NutritionLog() {
         />
       </div>
 
-      {/* Rings overview — 2x2 grid */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <div className="grid grid-cols-2 gap-4">
-          {/* Calorie ring — spans full width conceptually but fits in grid */}
-          <div className="flex flex-col items-center gap-1">
-            <div className="relative" style={{ width: 88, height: 88 }}>
-              <svg width={88} height={88} className="-rotate-90" style={{ display: "block" }}>
-                <circle cx={44} cy={44} r={36} fill="none" stroke="#f0f0f0" strokeWidth={8} />
-                <circle cx={44} cy={44} r={36} fill="none" stroke="#0ea5e9" strokeWidth={8}
-                  strokeDasharray={`${Math.min(totals.calories / GOALS.calories, 1) * 2 * Math.PI * 36} ${2 * Math.PI * 36}`}
-                  strokeLinecap="round" style={{ transition: "stroke-dasharray 0.4s ease" }} />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-base font-bold text-gray-900 leading-none">{Math.round(totals.calories)}</span>
-                <span className="text-[9px] text-gray-400 mt-0.5">kcal</span>
-              </div>
+      {/* Calorie + macros */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col items-center gap-4">
+        {/* Big calorie ring */}
+        <div className="flex flex-col items-center gap-1">
+          <div className="relative" style={{ width: 120, height: 120 }}>
+            <svg width={120} height={120} className="-rotate-90" style={{ display: "block" }}>
+              <circle cx={60} cy={60} r={52} fill="none" stroke="#f0f0f0" strokeWidth={10} />
+              <circle cx={60} cy={60} r={52} fill="none" stroke="#0ea5e9" strokeWidth={10}
+                strokeDasharray={`${Math.min(totals.calories / GOALS.calories, 1) * 2 * Math.PI * 52} ${2 * Math.PI * 52}`}
+                strokeLinecap="round" style={{ transition: "stroke-dasharray 0.4s ease" }} />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-2xl font-bold text-gray-900 leading-none">{Math.round(totals.calories)}</span>
+              <span className="text-xs text-gray-400 mt-0.5">kcal</span>
+              <span className="text-[10px] text-gray-300 leading-none">van {GOALS.calories}</span>
             </div>
-            <span className="text-[10px] text-gray-500">van {GOALS.calories}</span>
           </div>
+        </div>
 
-          <Ring value={totals.protein_g} goal={GOALS.protein_g} label="Eiwit" color="#60a5fa" />
-          <Ring value={totals.carbs_g} goal={GOALS.carbs_g} label="Koolh." color="#fbbf24" />
-          <Ring value={totals.fat_g} goal={GOALS.fat_g} label="Vet" color="#fb7185" />
+        {/* Macro rings row */}
+        <div className="flex justify-around w-full">
+          <Ring value={totals.protein_g} goal={GOALS.protein_g} label="Eiwit" color="#60a5fa" size={76} />
+          <Ring value={totals.carbs_g} goal={GOALS.carbs_g} label="Koolh." color="#fbbf24" size={76} />
+          <Ring value={totals.fat_g} goal={GOALS.fat_g} label="Vet" color="#fb7185" size={76} />
         </div>
       </div>
 
