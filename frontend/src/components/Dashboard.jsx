@@ -366,34 +366,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Whoop sync controls */}
-      <div className="flex justify-end gap-2">
-        {whoopConnected ? (
-          <>
-            <button
-              onClick={triggerSync}
-              disabled={syncing}
-              className="text-xs bg-brand-50 text-brand-600 border border-brand-200 px-3 py-1.5 rounded-lg font-medium disabled:opacity-50"
-            >
-              {syncing ? "Syncing…" : "Sync Whoop"}
-            </button>
-            <button
-              onClick={async () => {
-                await fetch("/api/whoop/disconnect", { method: "POST" });
-                setWhoopConnected(false);
-              }}
-              className="text-xs text-gray-400 hover:text-red-500 px-2 py-1.5 rounded-lg"
-            >
-              Disconnect
-            </button>
-          </>
-        ) : (
-          <a href="/api/whoop/authorize" className="text-xs bg-black text-white px-3 py-1.5 rounded-lg font-medium">
-            Connect Whoop
-          </a>
-        )}
-      </div>
-
       {/* Weight chart */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
@@ -424,6 +396,34 @@ export default function Dashboard() {
               <Line type="monotone" dataKey="kg" stroke="#0ea5e9" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Whoop sync controls */}
+      <div className="flex justify-end gap-2 pb-2">
+        {whoopConnected ? (
+          <>
+            <button
+              onClick={triggerSync}
+              disabled={syncing}
+              className="text-xs bg-brand-50 text-brand-600 border border-brand-200 px-3 py-1.5 rounded-lg font-medium disabled:opacity-50"
+            >
+              {syncing ? "Syncing…" : "Sync Whoop"}
+            </button>
+            <button
+              onClick={async () => {
+                await fetch("/api/whoop/disconnect", { method: "POST" });
+                setWhoopConnected(false);
+              }}
+              className="text-xs text-gray-400 hover:text-red-500 px-2 py-1.5 rounded-lg"
+            >
+              Disconnect
+            </button>
+          </>
+        ) : (
+          <a href="/api/whoop/authorize" className="text-xs bg-black text-white px-3 py-1.5 rounded-lg font-medium">
+            Connect Whoop
+          </a>
         )}
       </div>
     </div>
