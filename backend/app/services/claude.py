@@ -122,7 +122,7 @@ Today's nutrition so far: {nutrition_str}
 Recent workouts: {workout_str}"""
 
 
-WEB_SEARCH_TOOL = {"type": "web_search_20250305"}
+WEB_SEARCH_TOOL = {"type": "web_search_20250305", "name": "web_search"}
 
 
 def _get_history(user_id: str) -> list[dict]:
@@ -164,15 +164,31 @@ Respond in the same language the user writes in. Be concise and data-driven."""
     history = _get_history(user_id)
     messages = history + [{"role": "user", "content": user_message}]
 
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=1024,
-        system=system_prompt,
-        tools=[WEB_SEARCH_TOOL],
-        messages=messages,
-    )
+    while True:
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=2048,
+            system=system_prompt,
+            tools=[WEB_SEARCH_TOOL],
+            messages=messages,
+        )
 
-    return next(b.text for b in response.content if hasattr(b, "text"))
+        text_blocks = [b for b in response.content if hasattr(b, "text") and b.text]
+
+        if response.stop_reason == "end_turn":
+            return text_blocks[0].text if text_blocks else ""
+
+        if response.stop_reason == "tool_use":
+            # Continue loop — web_search is server-side, pass back tool results
+            messages.append({"role": "assistant", "content": response.content})
+            tool_results = [
+                {"type": "tool_result", "tool_use_id": b.id, "content": ""}
+                for b in response.content if hasattr(b, "id") and b.type == "tool_use"
+            ]
+            if tool_results:
+                messages.append({"role": "user", "content": tool_results})
+        else:
+            return text_blocks[0].text if text_blocks else ""
 
 
 def extract_nutrition(user_id: str, assistant_reply: str) -> bool:
