@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
+from datetime import date as date_type
 from app import db
 from app.models import ChatMessage, User
 from app.services.claude import build_context, call_claude, extract_nutrition
@@ -27,9 +28,10 @@ def chat():
         return jsonify({"error": "message is required"}), 400
 
     user = _ensure_user()
+    today = date_type.today()
 
     # Persist user message
-    user_msg = ChatMessage(user_id=user.id, role="user", content=user_message)
+    user_msg = ChatMessage(user_id=user.id, role="user", content=user_message, date=today)
     db.session.add(user_msg)
     db.session.commit()
 
@@ -38,7 +40,7 @@ def chat():
     reply = call_claude(user.id, user_message, context)
 
     # Persist assistant reply
-    assistant_msg = ChatMessage(user_id=user.id, role="assistant", content=reply)
+    assistant_msg = ChatMessage(user_id=user.id, role="assistant", content=reply, date=today)
     db.session.add(assistant_msg)
     db.session.commit()
 
@@ -54,12 +56,13 @@ def chat():
 @chat_bp.route("/chat/history", methods=["GET"])
 def chat_history():
     user = _ensure_user()
-    limit = min(int(request.args.get("limit", 50)), 200)
+    date_str = request.args.get("date")
+    target = date_type.fromisoformat(date_str) if date_str else date_type.today()
     messages = (
         ChatMessage.query
         .filter_by(user_id=user.id)
-        .order_by(ChatMessage.created_at.desc())
-        .limit(limit)
+        .filter(ChatMessage.date == target)
+        .order_by(ChatMessage.created_at.asc())
         .all()
     )
-    return jsonify([m.to_dict() for m in reversed(messages)])
+    return jsonify([m.to_dict() for m in messages])

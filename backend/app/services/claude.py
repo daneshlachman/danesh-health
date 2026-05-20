@@ -128,12 +128,12 @@ WEB_SEARCH_TOOL = {"type": "web_search_20250305"}
 def _get_history(user_id: str) -> list[dict]:
     messages = (
         ChatMessage.query
-        .filter_by(user_id=user_id)
-        .order_by(ChatMessage.created_at.desc())
+        .filter_by(user_id=user_id, date=date.today())
+        .order_by(ChatMessage.created_at.asc())
         .limit(MAX_HISTORY)
         .all()
     )
-    return [{"role": m.role, "content": m.content} for m in reversed(messages)]
+    return [{"role": m.role, "content": m.content} for m in messages]
 
 
 def call_claude(user_id: str, user_message: str, context: str) -> str:

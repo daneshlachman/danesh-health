@@ -79,18 +79,48 @@ function Message({ role, content, nutritionLogged }) {
   );
 }
 
+const toLocalISO = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+const todayISO = toLocalISO(new Date());
+
+function dateLabel(iso) {
+  if (iso === todayISO) return "Today";
+  const yesterday = toLocalISO(new Date(Date.now() - 86400000));
+  if (iso === yesterday) return "Yesterday";
+  return new Date(iso + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
 export default function Chat() {
+  const [date, setDate] = useState(todayISO);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const bottomRef = useRef(null);
+  const isToday = date === todayISO;
 
   useEffect(() => {
-    fetch("/api/chat/history")
+    fetch(`/api/chat/history?date=${date}`)
       .then((r) => r.json())
       .then(setMessages)
       .catch(console.error);
-  }, []);
+  }, [date]);
+
+  const prevDay = () => {
+    const d = new Date(date + "T12:00:00");
+    d.setDate(d.getDate() - 1);
+    setDate(toLocalISO(d));
+  };
+
+  const nextDay = () => {
+    const d = new Date(date + "T12:00:00");
+    d.setDate(d.getDate() + 1);
+    setDate(toLocalISO(d));
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -143,13 +173,30 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col h-full max-w-lg mx-auto">
+      {/* Date nav */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-white">
+        <button onClick={prevDay} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 text-lg">‹</button>
+        <span className="text-sm font-semibold text-gray-700">{dateLabel(date)}</span>
+        <button
+          onClick={nextDay}
+          disabled={isToday}
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 text-lg disabled:opacity-0"
+        >›</button>
+      </div>
+
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="text-center text-gray-400 text-sm mt-16">
             <p className="text-3xl mb-3">💬</p>
-            <p className="font-medium text-gray-500">Chat with your health coach.</p>
-            <p className="mt-2">Tell Claude what you ate, how you feel,</p>
-            <p>or ask anything about your data.</p>
+            {isToday ? (
+              <>
+                <p className="font-medium text-gray-500">Chat with your health coach.</p>
+                <p className="mt-2">Tell Claude what you ate, how you feel,</p>
+                <p>or ask anything about your data.</p>
+              </>
+            ) : (
+              <p className="font-medium text-gray-500">No messages on {dateLabel(date)}.</p>
+            )}
           </div>
         )}
         {messages.map((m, i) => (
@@ -165,7 +212,12 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t border-gray-100 bg-white px-4 py-3 flex gap-2">
+      {!isToday && (
+        <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 text-center text-xs text-gray-400">
+          Viewing {dateLabel(date)} — go to Today to chat
+        </div>
+      )}
+      <div className={`border-t border-gray-100 bg-white px-4 py-3 flex gap-2 ${!isToday ? "hidden" : ""}`}>
         <textarea
           rows={1}
           value={input}

@@ -164,6 +164,7 @@ class ChatMessage(db.Model):
     user_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # 'user' or 'assistant'
     content = db.Column(db.Text, nullable=False)
+    date = db.Column(db.Date, nullable=True)  # which day this message belongs to
     created_at = db.Column(db.DateTime(timezone=True), default=_now)
 
     def to_dict(self):
@@ -171,5 +172,6 @@ class ChatMessage(db.Model):
             "id": self.id,
             "role": self.role,
             "content": self.content,
+            "date": self.date.isoformat() if self.date else None,
             "created_at": self.created_at.isoformat(),
         }
