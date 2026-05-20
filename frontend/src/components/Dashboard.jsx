@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
 
 const PERIODS = [
@@ -11,7 +11,7 @@ const PERIODS = [
   { label: "1Y", days: 365 },
 ];
 
-function Ring({ value, goal, label, color, size = 80, inverse = false }) {
+function Ring({ value, goal, label, color, size = 80, inverse = false, showPct = true, unit = "", onClick }) {
   const r = (size - 10) / 2;
   const circ = 2 * Math.PI * r;
   const raw = value != null ? (inverse ? Math.max(0, goal - value) / goal : value / goal) : 0;
@@ -19,7 +19,7 @@ function Ring({ value, goal, label, color, size = 80, inverse = false }) {
   const dash = pct * circ;
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className={`flex flex-col items-center gap-1 ${onClick ? "cursor-pointer" : ""}`} onClick={onClick}>
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="-rotate-90" style={{ display: "block" }}>
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f0f0f0" strokeWidth={8} />
@@ -35,12 +35,77 @@ function Ring({ value, goal, label, color, size = 80, inverse = false }) {
           <span className="text-sm font-bold text-gray-900 leading-none">
             {value != null ? Math.round(value) : "—"}
           </span>
-          <span className="text-[9px] text-gray-400 leading-none mt-0.5">
-            {Math.round(pct * 100)}%
-          </span>
+          {showPct ? (
+            <span className="text-[9px] text-gray-400 leading-none mt-0.5">{Math.round(pct * 100)}%</span>
+          ) : unit ? (
+            <span className="text-[9px] text-gray-400 leading-none mt-0.5">{unit}</span>
+          ) : null}
         </div>
       </div>
       <span className="text-xs text-gray-500">{label}</span>
+    </div>
+  );
+}
+
+const HISTORY_PERIODS = [
+  { label: "1W", days: 7 },
+  { label: "1M", days: 30 },
+  { label: "3M", days: 90 },
+];
+
+const METRIC_CONFIG = {
+  recovery_score: { label: "Recovery", color: "#22c55e", unit: "%", domain: [0, 100] },
+  sleep_score:    { label: "Sleep",    color: "#a78bfa", unit: "%", domain: [0, 100] },
+  hrv_ms:         { label: "HRV",      color: "#60a5fa", unit: "ms", domain: ["auto", "auto"] },
+  resting_hr:     { label: "Resting HR", color: "#fb7185", unit: "bpm", domain: ["auto", "auto"] },
+};
+
+function MetricModal({ metric, onClose }) {
+  const [historyDays, setHistoryDays] = useState(30);
+  const [data, setData] = useState([]);
+  const cfg = METRIC_CONFIG[metric];
+
+  useEffect(() => {
+    fetch(`/api/whoop/history?days=${historyDays}`)
+      .then(r => r.json())
+      .then(rows => setData(rows.map(r => ({
+        date: r.date.slice(5),
+        value: r[metric],
+      })).filter(r => r.value != null)))
+      .catch(console.error);
+  }, [metric, historyDays]);
+
+  const avg = data.length ? Math.round(data.reduce((s, d) => s + d.value, 0) / data.length) : null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
+      <div className="bg-white rounded-t-2xl shadow-xl w-full max-w-lg p-5" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-base font-bold text-gray-900">{cfg.label}</h2>
+            {avg != null && <p className="text-xs text-gray-400">avg {avg} {cfg.unit}</p>}
+          </div>
+          <div className="flex items-center gap-2">
+            {HISTORY_PERIODS.map(({ label, days }) => (
+              <button key={days} onClick={() => setHistoryDays(days)}
+                className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${historyDays === days ? "bg-brand-500 text-white" : "text-gray-400 hover:text-gray-600"}`}>
+                {label}
+              </button>
+            ))}
+            <button onClick={onClose} className="ml-2 text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+            <YAxis domain={cfg.domain} tick={{ fontSize: 10 }} unit={cfg.unit} width={45} />
+            <Tooltip formatter={v => [`${v} ${cfg.unit}`, cfg.label]} />
+            {avg != null && <ReferenceLine y={avg} stroke={cfg.color} strokeDasharray="4 4" strokeOpacity={0.5} />}
+            <Line type="monotone" dataKey="value" stroke={cfg.color} strokeWidth={2} dot={false} connectNulls />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
@@ -138,6 +203,7 @@ function MiniCalendar({ selected, onSelect, onClose }) {
 export default function Dashboard() {
   const [date, setDate] = useState(todayISO);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [activeMetric, setActiveMetric] = useState(null);
   const [whoop, setWhoop] = useState(null);
   const [weightData, setWeightData] = useState([]);
   const [whoopConnected, setWhoopConnected] = useState(null);
@@ -270,33 +336,15 @@ export default function Dashboard() {
       {/* Whoop rings 2x2 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <div className="grid grid-cols-2 gap-4">
-          <Ring
-            value={whoop?.recovery_score}
-            goal={100}
-            label="Recovery"
-            color={recoveryColor(whoop?.recovery_score)}
-          />
-          <Ring
-            value={whoop?.sleep_score}
-            goal={100}
-            label="Sleep"
-            color="#a78bfa"
-          />
-          <Ring
-            value={whoop?.hrv_ms ? Math.round(whoop.hrv_ms) : null}
-            goal={100}
-            label="HRV (ms)"
-            color="#60a5fa"
-          />
-          <Ring
-            value={whoop?.resting_hr}
-            goal={80}
-            label="Resting HR"
-            color="#fb7185"
-            inverse={true}
-          />
+          <Ring value={whoop?.recovery_score} goal={100} label="Recovery" color={recoveryColor(whoop?.recovery_score)} unit="%" onClick={() => setActiveMetric("recovery_score")} />
+          <Ring value={whoop?.sleep_score} goal={100} label="Sleep" color="#a78bfa" unit="%" onClick={() => setActiveMetric("sleep_score")} />
+          <Ring value={whoop?.hrv_ms ? Math.round(whoop.hrv_ms) : null} goal={100} label="HRV (ms)" color="#60a5fa" showPct={false} unit="ms" onClick={() => setActiveMetric("hrv_ms")} />
+          <Ring value={whoop?.resting_hr} goal={80} label="Resting HR" color="#fb7185" inverse={true} showPct={false} unit="bpm" onClick={() => setActiveMetric("resting_hr")} />
         </div>
+        <p className="text-center text-[10px] text-gray-300 mt-3">Tap a ring for history</p>
       </div>
+
+      {activeMetric && <MetricModal metric={activeMetric} onClose={() => setActiveMetric(null)} />}
 
       {/* Calorie cards */}
       {tdee && (

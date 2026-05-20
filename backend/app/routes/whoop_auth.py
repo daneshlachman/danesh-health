@@ -78,6 +78,30 @@ def debug():
     return jsonify(results)
 
 
+@whoop_bp.route("/whoop/history")
+def history():
+    from app.models import WhoopData
+    from datetime import date, timedelta
+    user = _ensure_user()
+    days = int(request.args.get("days", 30))
+    since = date.today() - timedelta(days=days)
+    records = (
+        WhoopData.query
+        .filter_by(user_id=user.id)
+        .filter(WhoopData.date >= since)
+        .order_by(WhoopData.date.asc())
+        .all()
+    )
+    return jsonify([{
+        "date": r.date.isoformat(),
+        "recovery_score": r.recovery_score,
+        "sleep_score": r.sleep_score,
+        "hrv_ms": round(r.hrv_ms, 1) if r.hrv_ms else None,
+        "resting_hr": r.resting_hr,
+        "sleep_duration_hours": round(r.sleep_duration_hours, 1) if r.sleep_duration_hours else None,
+    } for r in records])
+
+
 @whoop_bp.route("/whoop/today")
 def today():
     from app.models import WhoopData
