@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify
 from datetime import date, datetime, timezone
 
-from app.models import WeightLog, Workout
+from app.models import WeightLog, Workout, NutritionLog
 
 profile_bp = Blueprint("profile", __name__)
 
@@ -47,11 +47,18 @@ def tdee_today():
     time_fraction = minutes_elapsed / (24 * 60)
     burned_now = round(time_fraction * passive_total + workout_kcal)
 
+    # Today's consumed calories
+    nutrition = NutritionLog.query.filter_by(user_id=USER_ID, date=today).all()
+    consumed = round(sum(n.calories or 0 for n in nutrition))
+    balance = consumed - burned_now  # positive = surplus, negative = deficit
+
     return jsonify({
         "tdee": tdee,
         "burned_now": burned_now,
         "bmr": round(bmr),
         "step_kcal": round(step_kcal),
         "workout_kcal": round(workout_kcal),
+        "consumed": consumed,
+        "balance": balance,
         "weight_kg": weight_kg,
     })
