@@ -25,7 +25,7 @@ export default function App() {
       </main>
 
       {/* Bottom tab bar */}
-      <nav className="bg-white border-t border-gray-200 flex safe-area-inset-bottom">
+      <nav className="bg-white border-t border-gray-200 flex" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {TABS.map((tab) => (
           <button
             key={tab.id}

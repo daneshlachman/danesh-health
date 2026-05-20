@@ -171,35 +171,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Integrations status */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">
-          Integrations
-        </p>
-        <div className="space-y-2">
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-700">Whoop</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-              whoopConnected
-                ? "bg-green-100 text-green-700"
-                : "bg-gray-100 text-gray-500"
-            }`}>
-              {whoopConnected ? "Connected" : "Not connected"}
-            </span>
-          </div>
-          {[
-            { name: "Garmin", phase: 4 },
-            { name: "Hevy", phase: 4 },
-          ].map(({ name, phase }) => (
-            <div key={name} className="flex justify-between items-center text-sm">
-              <span className="text-gray-700">{name}</span>
-              <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                Phase {phase}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
