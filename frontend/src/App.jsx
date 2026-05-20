@@ -14,7 +14,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
 
   return (
-    <div className="flex flex-col bg-gray-50" style={{ height: "100dvh" }}>
+    <div className="flex flex-col bg-gray-50" style={{ height: "100dvh", paddingTop: "env(safe-area-inset-top)", boxSizing: "border-box" }}>
       {/* Page content */}
       <main className="flex-1 overflow-y-auto">
         {activeTab === "dashboard" && <Dashboard />}
