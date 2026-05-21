@@ -396,11 +396,22 @@ export default function Dashboard() {
       {/* Weight chart */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
-          <button onClick={() => setShowWeightHistory(true)} className="text-xs font-semibold text-gray-700 uppercase tracking-wide hover:text-brand-500 transition-colors">
-            Weight
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowWeightHistory(true)} className="text-xs font-semibold text-gray-700 uppercase tracking-wide hover:text-brand-500 transition-colors">
+              Weight
+            </button>
+            {weightData.length >= 2 && (() => {
+              const diff = weightData[weightData.length - 1].kg - weightData[0].kg;
+              const isDown = diff < 0;
+              return (
+                <span className={`text-xs font-semibold flex items-center gap-0.5 ${isDown ? "text-green-500" : "text-red-400"}`}>
+                  {isDown ? "↓" : "↑"} {Math.abs(diff).toFixed(1)}kg
+                </span>
+              );
+            })()}
+          </div>
           <div className="flex items-center gap-1.5">
-            {[{ label: "1W", days: 7 }, { label: "1M", days: 30 }, { label: "2M", days: 60 }, { label: "3M", days: 90 }, { label: "6M", days: 180 }, { label: "1Y", days: 365 }].map(({ label, days }) => (
+            {[{ label: "1W", days: 7 }, { label: "1M", days: 30 }, { label: "2M", days: 60 }, { label: "3M", days: 90 }, { label: "6M", days: 180 }].map(({ label, days }) => (
               <button
                 key={days}
                 onClick={() => handlePeriod(days)}
