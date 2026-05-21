@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from flask import Blueprint, request, jsonify
 from app import db
 from app.models import WeightLog
@@ -11,14 +11,15 @@ weight_bp = Blueprint("weight", __name__)
 def get_weight():
     user = _ensure_user()
     days = int(request.args.get("days", 30))
+    since = date.today() - timedelta(days=days)
     logs = (
         WeightLog.query
         .filter_by(user_id=user.id)
-        .order_by(WeightLog.date.desc())
-        .limit(days)
+        .filter(WeightLog.date >= since)
+        .order_by(WeightLog.date.asc())
         .all()
     )
-    return jsonify([l.to_dict() for l in reversed(logs)])
+    return jsonify([l.to_dict() for l in logs])
 
 
 @weight_bp.route("/weight", methods=["POST"])
