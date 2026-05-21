@@ -227,7 +227,7 @@ export default function NutritionLog() {
               value={showKcal === "protein" ? Math.round(totals.protein_g * 4) : totals.protein_g}
               goal={showKcal === "protein" ? GOALS.protein_g * 4 : GOALS.protein_g}
               label={showKcal === "protein" ? "Protein kcal" : "Protein"}
-              color="#60a5fa" size={76}
+              color="#60a5fa" size={76} showPct={false} unit={showKcal === "protein" ? "kcal" : "g"}
             />
           </div>
           <div onClick={() => toggleMacro("carbs")} className="cursor-pointer">
@@ -235,7 +235,7 @@ export default function NutritionLog() {
               value={showKcal === "carbs" ? Math.round(totals.carbs_g * 4) : totals.carbs_g}
               goal={showKcal === "carbs" ? GOALS.carbs_g * 4 : GOALS.carbs_g}
               label={showKcal === "carbs" ? "Carbs kcal" : "Carbs"}
-              color="#fbbf24" size={76}
+              color="#fbbf24" size={76} showPct={false} unit={showKcal === "carbs" ? "kcal" : "g"}
             />
           </div>
           <div onClick={() => toggleMacro("fat")} className="cursor-pointer">
@@ -243,7 +243,7 @@ export default function NutritionLog() {
               value={showKcal === "fat" ? Math.round(totals.fat_g * 9) : totals.fat_g}
               goal={showKcal === "fat" ? GOALS.fat_g * 9 : GOALS.fat_g}
               label={showKcal === "fat" ? "Fat kcal" : "Fat"}
-              color="#fb7185" size={76}
+              color="#fb7185" size={76} showPct={false} unit={showKcal === "fat" ? "kcal" : "g"}
             />
           </div>
         </div>
