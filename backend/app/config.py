@@ -26,6 +26,10 @@ class BaseConfig:
     # Hevy
     HEVY_API_KEY = os.environ.get("HEVY_API_KEY", "")
 
+    # MyFitnessPal
+    MFP_USERNAME = os.environ.get("MFP_USERNAME", "")
+    MFP_PASSWORD = os.environ.get("MFP_PASSWORD", "")
+
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True

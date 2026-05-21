@@ -3,6 +3,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import WhoopHistory from "./WhoopHistory";
+import WeightHistory from "./WeightHistory";
 
 const PERIODS = [
   { label: "1W", days: 7 },
@@ -143,6 +144,9 @@ export default function Dashboard() {
   const [date, setDate] = useState(todayISO);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [historyTab, setHistoryTab] = useState(null);
+  const [showWeightHistory, setShowWeightHistory] = useState(false);
+  const [addingWeight, setAddingWeight] = useState(false);
+  const [weightInput, setWeightInput] = useState("");
   const [whoop, setWhoop] = useState(null);
   const [weightData, setWeightData] = useState([]);
   const [whoopConnected, setWhoopConnected] = useState(null);
@@ -237,6 +241,21 @@ export default function Dashboard() {
   };
 
   if (historyTab) return <WhoopHistory onBack={() => setHistoryTab(null)} initialTab={historyTab} />;
+  if (showWeightHistory) return <WeightHistory onBack={() => setShowWeightHistory(false)} />;
+
+  const saveWeight = () => {
+    const kg = parseFloat(weightInput.replace(",", "."));
+    if (!kg || isNaN(kg)) return;
+    fetch("/api/weight", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ weight_kg: kg }),
+    }).then(() => {
+      setAddingWeight(false);
+      setWeightInput("");
+      fetchWeight(weightDays);
+    }).catch(console.error);
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center h-48 text-gray-400">Loading…</div>;
@@ -356,21 +375,45 @@ export default function Dashboard() {
       {/* Weight chart */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Weight</p>
-          <div className="flex gap-1">
-            {PERIODS.map(({ label, days }) => (
-              <button
-                key={days}
-                onClick={() => handlePeriod(days)}
-                className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${
-                  weightDays === days ? "bg-brand-500 text-white" : "text-gray-400 hover:text-gray-600"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+          <button onClick={() => setShowWeightHistory(true)} className="text-xs font-semibold text-gray-700 uppercase tracking-wide hover:text-brand-500 transition-colors">
+            Weight ›
+          </button>
+          <div className="flex items-center gap-2">
+            <select
+              value={weightDays}
+              onChange={e => handlePeriod(Number(e.target.value))}
+              className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            >
+              {PERIODS.map(({ label, days }) => (
+                <option key={days} value={days}>{label}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => setAddingWeight(true)}
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-brand-500 text-white text-lg font-light hover:bg-brand-600 transition-colors"
+            >
+              +
+            </button>
           </div>
         </div>
+
+        {addingWeight && (
+          <div className="flex items-center gap-2 mb-3">
+            <input
+              type="number"
+              step="0.1"
+              value={weightInput}
+              onChange={e => setWeightInput(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && saveWeight()}
+              placeholder="88.5"
+              autoFocus
+              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <span className="text-sm text-gray-500">kg</span>
+            <button onClick={saveWeight} className="bg-brand-500 text-white rounded-xl px-3 py-2 text-sm font-medium">Save</button>
+            <button onClick={() => { setAddingWeight(false); setWeightInput(""); }} className="text-gray-400 text-sm px-2">✕</button>
+          </div>
+        )}
         {weightData.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-6">No weight data for this period.</p>
         ) : (
