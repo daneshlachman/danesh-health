@@ -439,10 +439,12 @@ export default function Dashboard() {
           <p className="text-sm text-gray-400 text-center py-6">No weight data for this period.</p>
         ) : (() => {
           const kgs = weightData.map(d => d.kg).filter(Boolean);
-          const minT = Math.floor(Math.min(...kgs) * 2) / 2;
-          const maxT = Math.ceil(Math.max(...kgs) * 2) / 2;
+          const rangeKg = Math.max(...kgs) - Math.min(...kgs);
+          const step = rangeKg <= 2 ? 0.5 : rangeKg <= 5 ? 1 : rangeKg <= 10 ? 2 : 2.5;
+          const minT = Math.floor(Math.min(...kgs) / step) * step;
+          const maxT = Math.ceil(Math.max(...kgs) / step) * step;
           const yTicks = [];
-          for (let t = minT; t <= maxT + 0.01; t += 0.5) yTicks.push(Math.round(t * 10) / 10);
+          for (let t = minT; t <= maxT + 0.01; t += step) yTicks.push(Math.round(t * 10) / 10);
           return (
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={weightData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
