@@ -150,6 +150,9 @@ export default function NutritionLog() {
   const [date, setDate] = useState(todayISO);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showKcal, setShowKcal] = useState(null); // 'protein' | 'carbs' | 'fat' | null
+
+  const toggleMacro = (macro) => setShowKcal(prev => prev === macro ? null : macro);
 
   const prevDay = () => { const d = new Date(date + "T12:00:00"); d.setDate(d.getDate() - 1); setDate(toLocalISO(d)); };
   const nextDay = () => { const d = new Date(date + "T12:00:00"); d.setDate(d.getDate() + 1); setDate(toLocalISO(d)); };
@@ -219,9 +222,30 @@ export default function NutritionLog() {
 
         {/* Macro rings row */}
         <div className="flex justify-around w-full">
-          <Ring value={totals.protein_g} goal={GOALS.protein_g} label="Protein" color="#60a5fa" size={76} />
-          <Ring value={totals.carbs_g} goal={GOALS.carbs_g} label="Carbs" color="#fbbf24" size={76} />
-          <Ring value={totals.fat_g} goal={GOALS.fat_g} label="Fat" color="#fb7185" size={76} />
+          <div onClick={() => toggleMacro("protein")} className="cursor-pointer">
+            <Ring
+              value={showKcal === "protein" ? Math.round(totals.protein_g * 4) : totals.protein_g}
+              goal={showKcal === "protein" ? GOALS.protein_g * 4 : GOALS.protein_g}
+              label={showKcal === "protein" ? "Protein kcal" : "Protein"}
+              color="#60a5fa" size={76}
+            />
+          </div>
+          <div onClick={() => toggleMacro("carbs")} className="cursor-pointer">
+            <Ring
+              value={showKcal === "carbs" ? Math.round(totals.carbs_g * 4) : totals.carbs_g}
+              goal={showKcal === "carbs" ? GOALS.carbs_g * 4 : GOALS.carbs_g}
+              label={showKcal === "carbs" ? "Carbs kcal" : "Carbs"}
+              color="#fbbf24" size={76}
+            />
+          </div>
+          <div onClick={() => toggleMacro("fat")} className="cursor-pointer">
+            <Ring
+              value={showKcal === "fat" ? Math.round(totals.fat_g * 9) : totals.fat_g}
+              goal={showKcal === "fat" ? GOALS.fat_g * 9 : GOALS.fat_g}
+              label={showKcal === "fat" ? "Fat kcal" : "Fat"}
+              color="#fb7185" size={76}
+            />
+          </div>
         </div>
       </div>
 
