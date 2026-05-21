@@ -82,8 +82,12 @@ function WeeklyChart({ data }) {
     current.push(d);
     const dow = new Date(d.date + "T12:00:00").getDay();
     if (dow === 0 || i === data.length - 1) {
-      const burned = current.reduce((s, x) => s + x.burned, 0);
-      const consumed = current.reduce((s, x) => s + (x.consumed || 0), 0);
+      const n = current.length;
+      const burned = Math.round(current.reduce((s, x) => s + x.burned, 0) / n);
+      const daysWithFood = current.filter(x => x.consumed > 0);
+      const consumed = daysWithFood.length
+        ? Math.round(daysWithFood.reduce((s, x) => s + x.consumed, 0) / daysWithFood.length)
+        : 0;
       const label = new Date(current[0].date + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       weeks.push({ week: label, burned, consumed });
       current = [];
@@ -92,13 +96,13 @@ function WeeklyChart({ data }) {
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm">
-      <p className="text-sm font-semibold text-gray-800 mb-3">Weekly calories</p>
+      <p className="text-sm font-semibold text-gray-800 mb-3">Avg daily calories per week</p>
       <ResponsiveContainer width="100%" height={180}>
         <BarChart data={weeks} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barSize={16} barGap={4}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
           <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#9ca3af" }} tickLine={false} axisLine={false} />
           <YAxis tick={{ fontSize: 9, fill: "#9ca3af" }} tickLine={false} axisLine={false} width={42} />
-          <Tooltip formatter={(v, name) => [`${v.toLocaleString()} kcal`, name === "burned" ? "Burned" : "Consumed"]} />
+          <Tooltip formatter={(v, name) => [`${v.toLocaleString()} kcal/day`, name === "burned" ? "Avg burned" : "Avg consumed"]} />
           <Bar dataKey="burned" fill="#bfdbfe" radius={[3,3,0,0]} name="burned" />
           <Bar dataKey="consumed" fill="#0ea5e9" radius={[3,3,0,0]} name="consumed" />
         </BarChart>
