@@ -1,7 +1,28 @@
 import { useEffect, useState } from "react";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
+
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function formatXTick(dateStr, days) {
+  const [m, d] = dateStr.split("-").map(Number);
+  const mon = MONTH_NAMES[m - 1];
+  if (days <= 30) return `${d} ${mon}`;
+  // For 3M+: show "Mar", "Apr" etc only on ~1st of month
+  if (d <= 3) return mon;
+  return "";
+}
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl shadow-lg px-3 py-2">
+      <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+      <p className="text-sm font-bold text-gray-900">{payload[0].value} kg</p>
+    </div>
+  );
+};
 import WhoopHistory from "./WhoopHistory";
 import WeightHistory from "./WeightHistory";
 
@@ -418,12 +439,34 @@ export default function Dashboard() {
           <p className="text-sm text-gray-400 text-center py-6">No weight data for this period.</p>
         ) : (
           <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={weightData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-              <YAxis domain={["auto", "auto"]} tick={{ fontSize: 10 }} unit="kg" width={40} />
-              <Tooltip formatter={(v) => [`${v} kg`, "Weight"]} />
-              <Line type="monotone" dataKey="kg" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+            <LineChart data={weightData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 9, fill: "#9ca3af" }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={d => formatXTick(d, weightDays)}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                domain={["auto", "auto"]}
+                tick={{ fontSize: 9, fill: "#9ca3af" }}
+                tickLine={false}
+                axisLine={false}
+                unit="kg"
+                width={38}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <ReferenceLine x="03-28" stroke="#f59e0b" strokeDasharray="4 3" strokeWidth={1.5} label={{ value: "28 Mar", position: "top", fontSize: 9, fill: "#f59e0b" }} />
+              <Line
+                type="monotone"
+                dataKey="kg"
+                stroke="#0ea5e9"
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4, fill: "#0ea5e9", strokeWidth: 0 }}
+              />
             </LineChart>
           </ResponsiveContainer>
         )}
