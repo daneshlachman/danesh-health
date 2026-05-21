@@ -100,6 +100,7 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
   const bottomRef = useRef(null);
   const isToday = date === todayISO;
 
@@ -128,7 +129,8 @@ export default function Chat() {
 
   const send = async () => {
     const text = input.trim();
-    if (!text || sending) return;
+    if (!text || sending || sendingRef.current) return;
+    sendingRef.current = true;
 
     setInput("");
     setSending(true);
@@ -161,6 +163,7 @@ export default function Chat() {
       ]);
     } finally {
       setSending(false);
+      sendingRef.current = false;
     }
   };
 
