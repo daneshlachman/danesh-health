@@ -332,7 +332,7 @@ export default function Dashboard() {
           <div className="p-4 border-b border-gray-50">
             <div className="flex justify-between items-baseline mb-2">
               <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Burned</span>
-              <span className="text-xs text-gray-400">goal {tdee.tdee.toLocaleString()} kcal</span>
+              <span className="text-xs text-gray-400">est. {tdee.tdee.toLocaleString()} kcal</span>
             </div>
             <div className="flex items-baseline gap-1 mb-2">
               <span className="text-2xl font-bold text-gray-900">{tdee.burned_now.toLocaleString()}</span>
@@ -353,7 +353,7 @@ export default function Dashboard() {
           <div className="p-4 border-b border-gray-50">
             <div className="flex justify-between items-baseline mb-2">
               <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Consumed</span>
-              <span className="text-xs text-gray-400">goal {tdee.tdee.toLocaleString()} kcal</span>
+              <span className="text-xs text-gray-400">est. {tdee.tdee.toLocaleString()} kcal</span>
             </div>
             <div className="flex items-baseline gap-1 mb-2">
               <span className="text-2xl font-bold text-gray-900">{tdee.consumed.toLocaleString()}</span>
