@@ -17,7 +17,7 @@ export default function App() {
     <div className="flex flex-col bg-gray-50" style={{ height: "100svh" }}>
       {/* Page content */}
       <main className="flex-1 overflow-y-auto">
-        {activeTab === "dashboard" && <Dashboard />}
+        {activeTab === "dashboard" && <Dashboard onNavigate={setActiveTab} />}
         {activeTab === "nutrition" && <NutritionLog />}
         {activeTab === "workouts" && <WorkoutLog />}
         {activeTab === "chat" && <Chat />}

@@ -160,7 +160,7 @@ function MiniCalendar({ selected, onSelect, onClose }) {
   );
 }
 
-export default function Dashboard() {
+export default function Dashboard({ onNavigate }) {
   const [date, setDate] = useState(todayISO);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [historyTab, setHistoryTab] = useState(null);
@@ -327,9 +327,9 @@ export default function Dashboard() {
 
       {/* Calorie cards */}
       {tdee && (
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden cursor-pointer" onClick={() => setShowCaloriesHistory(true)}>
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           {/* Burned */}
-          <div className="p-4 border-b border-gray-50">
+          <div className="p-4 border-b border-gray-50 cursor-pointer" onClick={() => setShowCaloriesHistory(true)}>
             <div className="flex justify-between items-baseline mb-2">
               <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Burned</span>
               <span className="text-xs text-gray-400">est. {tdee.tdee.toLocaleString()} kcal</span>
@@ -350,7 +350,7 @@ export default function Dashboard() {
           </div>
 
           {/* Consumed */}
-          <div className="p-4 border-b border-gray-50">
+          <div className="p-4 border-b border-gray-50 cursor-pointer" onClick={() => onNavigate?.("nutrition")}>
             <div className="flex justify-between items-baseline mb-2">
               <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Consumed</span>
             </div>
