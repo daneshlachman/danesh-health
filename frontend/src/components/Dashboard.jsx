@@ -175,7 +175,7 @@ export default function Dashboard() {
   const [whoopConnected, setWhoopConnected] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [weightDays, setWeightDays] = useState(30);
+  const [weightDays, setWeightDays] = useState(7);
   const [tdee, setTdee] = useState(null);
 
   const AUTO_SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000;

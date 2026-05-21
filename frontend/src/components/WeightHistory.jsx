@@ -48,7 +48,7 @@ function KPI({ label, value, sub, color }) {
 }
 
 export default function WeightHistory({ onBack }) {
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(7);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
 
