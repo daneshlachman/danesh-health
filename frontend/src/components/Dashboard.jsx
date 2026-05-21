@@ -16,9 +16,11 @@ function formatXTick(dateStr, days) {
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
+  const [m, d] = (label || "").split("-").map(Number);
+  const formatted = m && d ? `${d} ${MONTH_NAMES[m - 1]}` : label;
   return (
     <div className="bg-white border border-gray-100 rounded-xl shadow-lg px-3 py-2">
-      <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+      <p className="text-xs text-gray-400 mb-0.5">{formatted}</p>
       <p className="text-sm font-bold text-gray-900">{payload[0].value} kg</p>
     </div>
   );
