@@ -176,7 +176,7 @@ Respond in the same language the user writes in. Be concise and data-driven."""
         text_blocks = [b for b in response.content if hasattr(b, "text") and b.text]
 
         if response.stop_reason == "end_turn":
-            return text_blocks[0].text if text_blocks else ""
+            return "\n".join(b.text for b in text_blocks) if text_blocks else ""
 
         if response.stop_reason == "tool_use":
             # Continue loop — web_search is server-side, pass back tool results
@@ -188,7 +188,7 @@ Respond in the same language the user writes in. Be concise and data-driven."""
             if tool_results:
                 messages.append({"role": "user", "content": tool_results})
         else:
-            return text_blocks[0].text if text_blocks else ""
+            return "\n".join(b.text for b in text_blocks) if text_blocks else ""
 
 
 def extract_nutrition(user_id: str, assistant_reply: str) -> bool:
