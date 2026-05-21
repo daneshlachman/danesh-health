@@ -437,7 +437,13 @@ export default function Dashboard() {
         )}
         {weightData.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-6">No weight data for this period.</p>
-        ) : (
+        ) : (() => {
+          const kgs = weightData.map(d => d.kg).filter(Boolean);
+          const minT = Math.floor(Math.min(...kgs) * 2) / 2;
+          const maxT = Math.ceil(Math.max(...kgs) * 2) / 2;
+          const yTicks = [];
+          for (let t = minT; t <= maxT + 0.01; t += 0.5) yTicks.push(Math.round(t * 10) / 10);
+          return (
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={weightData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
@@ -450,12 +456,14 @@ export default function Dashboard() {
                 interval="preserveStartEnd"
               />
               <YAxis
-                domain={["auto", "auto"]}
+                domain={[minT - 0.25, maxT + 0.25]}
+                ticks={yTicks}
+                tickFormatter={v => Number.isInteger(v) ? `${v}` : `${v.toFixed(1)}`}
                 tick={{ fontSize: 9, fill: "#9ca3af" }}
                 tickLine={false}
                 axisLine={false}
                 unit="kg"
-                width={38}
+                width={42}
               />
               <Tooltip content={<CustomTooltip />} />
               <ReferenceLine x="03-28" stroke="#f59e0b" strokeDasharray="4 3" strokeWidth={1.5} label={{ value: "28 Mar", position: "top", fontSize: 9, fill: "#f59e0b" }} />
@@ -469,7 +477,8 @@ export default function Dashboard() {
               />
             </LineChart>
           </ResponsiveContainer>
-        )}
+          );
+        })()}
       </div>
 
       {/* Whoop sync controls */}
