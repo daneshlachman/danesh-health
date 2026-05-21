@@ -59,7 +59,7 @@ const GOALS = { calories: 2400, protein_g: 180, carbs_g: 240, fat_g: 80 };
 const MEAL_ORDER = ["breakfast", "lunch", "dinner", "snack"];
 const MEAL_LABELS = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack" };
 
-function Ring({ value, goal, label, color, size = 80 }) {
+function Ring({ value, goal, label, color, size = 80, showPct = true, unit = "" }) {
   const r = (size - 10) / 2;
   const circ = 2 * Math.PI * r;
   const pct = Math.min(value / goal, 1);
@@ -80,7 +80,10 @@ function Ring({ value, goal, label, color, size = 80 }) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-sm font-bold text-gray-900 leading-none">{Math.round(value)}</span>
-          <span className="text-[9px] text-gray-400 leading-none mt-0.5">{Math.round((value / goal) * 100)}%</span>
+          {showPct
+            ? <span className="text-[9px] text-gray-400 leading-none mt-0.5">{Math.round((value / goal) * 100)}%</span>
+            : unit ? <span className="text-[9px] text-gray-400 leading-none mt-0.5">{unit}</span> : null
+          }
         </div>
       </div>
       <span className="text-xs text-gray-500">{label}</span>
