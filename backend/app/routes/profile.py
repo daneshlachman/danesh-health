@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 
 from app.models import WeightLog, Workout, NutritionLog
 
@@ -67,3 +67,67 @@ def tdee_today():
         "balance": balance,
         "weight_kg": weight_kg,
     })
+
+
+@profile_bp.route("/calories/history", methods=["GET"])
+def calories_history():
+    days = int(request.args.get("days", 30))
+    today = date.today()
+    start = today - timedelta(days=days)
+
+    latest_weight = (
+        WeightLog.query.filter_by(user_id=USER_ID)
+        .order_by(WeightLog.date.desc()).first()
+    )
+    weight_kg = latest_weight.weight_kg if latest_weight else 88
+    age = (today - DATE_OF_BIRTH).days / 365.25
+    bmr = 10 * weight_kg + 6.25 * HEIGHT_CM - 5 * age + 5
+    step_kcal = AVG_DAILY_STEPS * 0.04 * (weight_kg / 70)
+    tef = bmr * 0.10
+    passive_total = round(bmr + step_kcal + tef)
+
+    # Workout calories per day
+    workouts = Workout.query.filter(
+        Workout.user_id == USER_ID,
+        Workout.date >= start,
+        Workout.date <= today
+    ).all()
+    workout_by_day = {}
+    for w in workouts:
+        raw = w.raw_json or {}
+        cal = 0
+        if w.source == "garmin" and raw.get("calories"):
+            cal = raw["calories"]
+        elif w.source == "hevy" and w.duration_minutes:
+            cal = round(5 * weight_kg * (w.duration_minutes / 60))
+        if cal:
+            d = w.date.isoformat()
+            workout_by_day[d] = workout_by_day.get(d, 0) + cal
+
+    # Consumed per day
+    nutrition = NutritionLog.query.filter(
+        NutritionLog.user_id == USER_ID,
+        NutritionLog.date >= start,
+        NutritionLog.date <= today
+    ).all()
+    consumed_by_day = {}
+    for n in nutrition:
+        d = n.date.isoformat()
+        consumed_by_day[d] = consumed_by_day.get(d, 0) + (n.calories or 0)
+
+    result = []
+    current = start + timedelta(days=1)
+    while current <= today:
+        d = current.isoformat()
+        workout_kcal = workout_by_day.get(d, 0)
+        burned = passive_total + workout_kcal
+        consumed = round(consumed_by_day.get(d, 0))
+        result.append({
+            "date": d,
+            "burned": burned,
+            "consumed": consumed,
+            "balance": consumed - burned if consumed > 0 else None,
+        })
+        current += timedelta(days=1)
+
+    return jsonify(result)

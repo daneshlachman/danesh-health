@@ -27,6 +27,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 import WhoopHistory from "./WhoopHistory";
 import WeightHistory from "./WeightHistory";
+import CaloriesHistory from "./CaloriesHistory";
 
 const PERIODS = [
   { label: "1W", days: 7 },
@@ -168,6 +169,7 @@ export default function Dashboard() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [historyTab, setHistoryTab] = useState(null);
   const [showWeightHistory, setShowWeightHistory] = useState(false);
+  const [showCaloriesHistory, setShowCaloriesHistory] = useState(false);
   const [addingWeight, setAddingWeight] = useState(false);
   const [weightInput, setWeightInput] = useState("");
   const [whoop, setWhoop] = useState(null);
@@ -265,6 +267,7 @@ export default function Dashboard() {
 
   if (historyTab) return <WhoopHistory onBack={() => setHistoryTab(null)} initialTab={historyTab} />;
   if (showWeightHistory) return <WeightHistory onBack={() => setShowWeightHistory(false)} />;
+  if (showCaloriesHistory) return <CaloriesHistory onBack={() => setShowCaloriesHistory(false)} />;
 
   const saveWeight = () => {
     const kg = parseFloat(weightInput.replace(",", "."));
@@ -329,7 +332,7 @@ export default function Dashboard() {
 
       {/* Calorie cards */}
       {tdee && (
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden cursor-pointer" onClick={() => setShowCaloriesHistory(true)}>
           {/* Burned */}
           <div className="p-4 border-b border-gray-50">
             <div className="flex justify-between items-baseline mb-2">
