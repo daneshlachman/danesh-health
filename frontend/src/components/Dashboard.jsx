@@ -402,7 +402,7 @@ export default function Dashboard() {
             Weight ›
           </button>
           <div className="flex items-center gap-1.5">
-            {[{ label: "1W", days: 7 }, { label: "1M", days: 30 }, { label: "2M", days: 60 }, { label: "3M", days: 90 }].map(({ label, days }) => (
+            {[{ label: "1W", days: 7 }, { label: "1M", days: 30 }, { label: "2M", days: 60 }].map(({ label, days }) => (
               <button
                 key={days}
                 onClick={() => handlePeriod(days)}

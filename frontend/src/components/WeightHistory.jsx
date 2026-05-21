@@ -7,10 +7,33 @@ import {
 const PERIODS = [
   { label: "1W", days: 7 },
   { label: "1M", days: 30 },
+  { label: "2M", days: 60 },
   { label: "3M", days: 90 },
   { label: "6M", days: 180 },
   { label: "1Y", days: 365 },
 ];
+
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function formatXTick(dateStr, days) {
+  const [m, d] = dateStr.split("-").map(Number);
+  const mon = MONTH_NAMES[m - 1];
+  if (days <= 30) return `${d} ${mon}`;
+  if (d <= 3) return mon;
+  return "";
+}
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  const [m, d] = (label || "").split("-").map(Number);
+  const formatted = m && d ? `${d} ${MONTH_NAMES[m - 1]}` : label;
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl shadow-lg px-3 py-2">
+      <p className="text-xs text-gray-400 mb-0.5">{formatted}</p>
+      <p className="text-sm font-bold text-gray-900">{payload[0].value} kg</p>
+    </div>
+  );
+};
 
 function KPI({ label, value, sub, color }) {
   return (
@@ -85,18 +108,44 @@ export default function WeightHistory({ onBack }) {
           <p className="text-center text-gray-400 py-8">Loading…</p>
         ) : data.length === 0 ? (
           <p className="text-center text-gray-400 py-8">No data for this period.</p>
-        ) : (
-          <ResponsiveContainer width="100%" height={200}>
+        ) : (() => {
+          const kgs = data.map(d => d.kg).filter(Boolean);
+          const rangeKg = Math.max(...kgs) - Math.min(...kgs);
+          const step = rangeKg <= 2 ? 0.5 : rangeKg <= 5 ? 1 : rangeKg <= 10 ? 2 : 2.5;
+          const minT = Math.floor(Math.min(...kgs) / step) * step;
+          const maxT = Math.ceil(Math.max(...kgs) / step) * step;
+          const yTicks = [];
+          for (let t = minT; t <= maxT + 0.01; t += step) yTicks.push(Math.round(t * 10) / 10);
+          return (
+          <ResponsiveContainer width="100%" height={220}>
             <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
-              <XAxis dataKey="date" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
-              <YAxis domain={["auto", "auto"]} tick={{ fontSize: 9 }} unit="kg" width={42} />
-              <Tooltip formatter={v => [`${v} kg`, "Weight"]} />
-              {avg && <ReferenceLine y={avg} stroke="#0ea5e9" strokeDasharray="4 4" strokeOpacity={0.4} />}
-              <Line type="monotone" dataKey="kg" stroke="#0ea5e9" strokeWidth={2} dot={false} connectNulls />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 9, fill: "#9ca3af" }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={d => formatXTick(d, days)}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                domain={[minT - 0.25, maxT + 0.25]}
+                ticks={yTicks}
+                tickFormatter={v => Number.isInteger(v) ? `${v}` : `${v.toFixed(1)}`}
+                tick={{ fontSize: 9, fill: "#9ca3af" }}
+                tickLine={false}
+                axisLine={false}
+                unit="kg"
+                width={42}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <ReferenceLine x="03-28" stroke="#f59e0b" strokeDasharray="4 3" strokeWidth={1.5} label={{ value: "28 Mar", position: "top", fontSize: 9, fill: "#f59e0b" }} />
+              {avg && <ReferenceLine y={avg} stroke="#0ea5e9" strokeDasharray="4 4" strokeOpacity={0.3} />}
+              <Line type="monotone" dataKey="kg" stroke="#0ea5e9" strokeWidth={2} dot={false} connectNulls activeDot={{ r: 4, fill: "#0ea5e9", strokeWidth: 0 }} />
             </LineChart>
           </ResponsiveContainer>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
