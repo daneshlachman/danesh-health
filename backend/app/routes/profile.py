@@ -42,11 +42,15 @@ def tdee_today():
 
     tdee = round(passive_total + workout_kcal)
 
-    # Time-based burn: passive calories scale linearly through the day
-    now = datetime.now(timezone.utc).astimezone()
-    minutes_elapsed = now.hour * 60 + now.minute
-    time_fraction = minutes_elapsed / (24 * 60)
-    burned_now = round(time_fraction * passive_total + workout_kcal)
+    # For past days show full TDEE; for today scale by time of day
+    is_today = today == date.today()
+    if is_today:
+        now = datetime.now(timezone.utc).astimezone()
+        minutes_elapsed = now.hour * 60 + now.minute
+        time_fraction = minutes_elapsed / (24 * 60)
+        burned_now = round(time_fraction * passive_total + workout_kcal)
+    else:
+        burned_now = tdee
 
     # Today's consumed calories
     nutrition = NutritionLog.query.filter_by(user_id=USER_ID, date=today).all()
