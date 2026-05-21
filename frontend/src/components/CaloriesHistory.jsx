@@ -30,6 +30,7 @@ function CalendarHeatmap({ data }) {
   const today = new Date(todayISO + "T12:00:00");
   const year = today.getFullYear();
   const month = today.getMonth();
+  const [selected, setSelected] = useState(null);
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const startOffset = (firstDay + 6) % 7;
@@ -65,12 +66,41 @@ function CalendarHeatmap({ data }) {
           const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
           const isFuture = iso > todayISO;
           return (
-            <div key={day} className={`rounded-lg text-xs py-1.5 text-center font-medium ${isFuture ? "text-gray-200" : dayColor(iso)}`}>
+            <div
+              key={day}
+              onClick={() => !isFuture && setSelected(selected === iso ? null : iso)}
+              className={`rounded-lg text-xs py-1.5 text-center font-medium transition-all ${isFuture ? "text-gray-200" : "cursor-pointer " + dayColor(iso)} ${selected === iso ? "ring-2 ring-offset-1 ring-gray-500" : ""}`}
+            >
               {day}
             </div>
           );
         })}
-      </div>
+      {selected && byDate[selected] && (
+        <div className="mt-3 rounded-xl bg-gray-50 px-4 py-3">
+          <p className="text-xs font-semibold text-gray-600 mb-2">
+            {new Date(selected + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long" })}
+          </p>
+          <div className="flex gap-4">
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase">Burned</p>
+              <p className="text-sm font-bold text-gray-900">{byDate[selected].burned.toLocaleString()} kcal</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase">Consumed</p>
+              <p className="text-sm font-bold text-gray-900">{byDate[selected].consumed > 0 ? `${byDate[selected].consumed.toLocaleString()} kcal` : "—"}</p>
+            </div>
+            {byDate[selected].balance !== null && (
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase">Balance</p>
+                <p className={`text-sm font-bold ${byDate[selected].balance < 0 ? "text-green-600" : "text-orange-500"}`}>
+                  {byDate[selected].balance > 0 ? "+" : ""}{byDate[selected].balance.toLocaleString()} kcal
+                  <span className="text-[10px] font-normal ml-1">{byDate[selected].balance < 0 ? "Deficit" : "Surplus"}</span>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -103,7 +133,7 @@ function WeeklyChart({ data }) {
     <div className="bg-white rounded-2xl p-4 shadow-sm">
       <p className="text-sm font-semibold text-gray-800 mb-3">Avg daily calories per week</p>
       <ResponsiveContainer width="100%" height={180}>
-        <BarChart data={weeks} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barSize={16} barGap={4}>
+        <BarChart data={weeks} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barSize={16} barGap={4} cursor={false}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
           <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#9ca3af" }} tickLine={false} axisLine={false} />
           <YAxis tick={{ fontSize: 9, fill: "#9ca3af" }} tickLine={false} axisLine={false} width={42} />
@@ -111,7 +141,7 @@ function WeeklyChart({ data }) {
             contentStyle={{ fontSize: 11, padding: "4px 8px", borderRadius: 8, border: "1px solid #f0f0f0" }}
             formatter={(v, name) => [`${v.toLocaleString()} kcal`, name === "burned" ? "Burned" : "Consumed"]}
           />
-          <Bar dataKey="burned" fill="#bfdbfe" radius={[3,3,0,0]} name="burned" />
+          <Bar dataKey="burned" fill="#bfdbfe" radius={[3,3,0,0]} name="burned" cursor={false} />
           <Bar dataKey="consumed" fill="#0ea5e9" radius={[3,3,0,0]} name="consumed" />
         </BarChart>
       </ResponsiveContainer>
