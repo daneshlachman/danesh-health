@@ -88,7 +88,12 @@ function WeeklyChart({ data }) {
       const consumed = daysWithFood.length
         ? Math.round(daysWithFood.reduce((s, x) => s + x.consumed, 0) / daysWithFood.length)
         : 0;
-      const label = new Date(current[0].date + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      const startDate = new Date(current[0].date + "T12:00:00");
+      const endDate = new Date(current[current.length - 1].date + "T12:00:00");
+      const startDay = startDate.getDate();
+      const endDay = endDate.getDate();
+      const mon = MONTH_NAMES[startDate.getMonth()];
+      const label = startDay === endDay ? `${startDay} ${mon}` : `${startDay}-${endDay} ${mon}`;
       weeks.push({ week: label, burned, consumed });
       current = [];
     }
@@ -102,7 +107,10 @@ function WeeklyChart({ data }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
           <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#9ca3af" }} tickLine={false} axisLine={false} />
           <YAxis tick={{ fontSize: 9, fill: "#9ca3af" }} tickLine={false} axisLine={false} width={42} />
-          <Tooltip formatter={(v, name) => [`${v.toLocaleString()} kcal/day`, name === "burned" ? "Avg burned" : "Avg consumed"]} />
+          <Tooltip
+            contentStyle={{ fontSize: 11, padding: "4px 8px", borderRadius: 8, border: "1px solid #f0f0f0" }}
+            formatter={(v, name) => [`${v.toLocaleString()} kcal`, name === "burned" ? "Burned" : "Consumed"]}
+          />
           <Bar dataKey="burned" fill="#bfdbfe" radius={[3,3,0,0]} name="burned" />
           <Bar dataKey="consumed" fill="#0ea5e9" radius={[3,3,0,0]} name="consumed" />
         </BarChart>
