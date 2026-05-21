@@ -166,7 +166,7 @@ function SleepTab({ data }) {
 }
 
 export default function WhoopHistory({ onBack, initialTab = "recovery" }) {
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(7);
   const [tab, setTab] = useState(initialTab);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);

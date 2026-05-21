@@ -36,7 +36,7 @@ def chat():
     db.session.commit()
 
     # Build health context and call Claude
-    context = build_context(user.id)
+    context = build_context(user.id, user_message)
     reply = call_claude(user.id, user_message, context)
 
     # Persist assistant reply

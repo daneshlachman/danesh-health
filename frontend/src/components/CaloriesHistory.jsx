@@ -69,32 +69,37 @@ function CalendarHeatmap({ data }) {
             <div
               key={day}
               onClick={() => !isFuture && setSelected(selected === iso ? null : iso)}
-              className={`rounded-lg text-xs py-1.5 text-center font-medium transition-all ${isFuture ? "text-gray-200" : "cursor-pointer " + dayColor(iso)} ${selected === iso ? "ring-2 ring-offset-1 ring-gray-500" : ""}`}
+              className={`rounded-lg text-xs py-1 text-center font-medium transition-all flex flex-col items-center justify-center ${isFuture ? "text-gray-200" : "cursor-pointer " + dayColor(iso)} ${selected === iso ? "ring-2 ring-offset-1 ring-gray-500" : ""}`}
             >
-              {day}
+              <span>{day}</span>
+              {iso === todayISO
+                ? <span className="block w-1 h-1 rounded-full mt-0.5" style={{ backgroundColor: byDate[iso] ? "rgba(255,255,255,0.8)" : "#0ea5e9" }} />
+                : <span className="block w-1 h-1 mt-0.5" />
+              }
             </div>
           );
         })}
+      </div>
       {selected && byDate[selected] && (
-        <div className="mt-3 rounded-xl bg-gray-50 px-4 py-3">
-          <p className="text-xs font-semibold text-gray-600 mb-2">
-            {new Date(selected + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long" })}
+        <div className="mt-3 border-t border-gray-100 pt-3">
+          <p className="text-xs font-semibold text-gray-500 mb-2">
+            {new Date(selected + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
           </p>
-          <div className="flex gap-4">
+          <div className="flex gap-6">
             <div>
-              <p className="text-[10px] text-gray-400 uppercase">Burned</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Burned</p>
               <p className="text-sm font-bold text-gray-900">{byDate[selected].burned.toLocaleString()} kcal</p>
             </div>
             <div>
-              <p className="text-[10px] text-gray-400 uppercase">Consumed</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Consumed</p>
               <p className="text-sm font-bold text-gray-900">{byDate[selected].consumed > 0 ? `${byDate[selected].consumed.toLocaleString()} kcal` : "—"}</p>
             </div>
             {byDate[selected].balance !== null && (
               <div>
-                <p className="text-[10px] text-gray-400 uppercase">Balance</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Balance</p>
                 <p className={`text-sm font-bold ${byDate[selected].balance < 0 ? "text-green-600" : "text-orange-500"}`}>
                   {byDate[selected].balance > 0 ? "+" : ""}{byDate[selected].balance.toLocaleString()} kcal
-                  <span className="text-[10px] font-normal ml-1">{byDate[selected].balance < 0 ? "Deficit" : "Surplus"}</span>
+                  <span className={`text-[10px] font-normal ml-1 ${byDate[selected].balance < 0 ? "text-green-500" : "text-orange-400"}`}>{byDate[selected].balance < 0 ? "deficit" : "surplus"}</span>
                 </p>
               </div>
             )}
@@ -138,6 +143,7 @@ function WeeklyChart({ data }) {
           <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#9ca3af" }} tickLine={false} axisLine={false} />
           <YAxis tick={{ fontSize: 9, fill: "#9ca3af" }} tickLine={false} axisLine={false} width={42} />
           <Tooltip
+            cursor={{ fill: "transparent" }}
             contentStyle={{ fontSize: 11, padding: "4px 8px", borderRadius: 8, border: "1px solid #f0f0f0" }}
             formatter={(v, name) => [`${v.toLocaleString()} kcal`, name === "burned" ? "Burned" : "Consumed"]}
           />
@@ -156,6 +162,7 @@ function WeeklyChart({ data }) {
 export default function CaloriesHistory({ onBack }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [kpiDays, setKpiDays] = useState(7);
 
   useEffect(() => {
     fetch("/api/calories/history?days=30")
@@ -165,19 +172,28 @@ export default function CaloriesHistory({ onBack }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const daysWithData = data.filter(d => d.consumed > 0);
+  const kpiData = kpiDays === 7 ? data.slice(-7) : data;
+  const daysWithData = kpiData.filter(d => d.consumed > 0);
   const avgBurned = daysWithData.length ? Math.round(daysWithData.reduce((s, d) => s + d.burned, 0) / daysWithData.length) : null;
   const avgConsumed = daysWithData.length ? Math.round(daysWithData.reduce((s, d) => s + d.consumed, 0) / daysWithData.length) : null;
-  const avgBalance = avgBurned && avgConsumed ? avgConsumed - avgBurned : null;
-  const deficitDays = daysWithData.filter(d => d.balance < 0).length;
-  const surplusDays = daysWithData.filter(d => d.balance > 0).length;
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 text-xl">←</button>
-        <h1 className="text-xl font-bold text-gray-900">Calories</h1>
-        <span className="text-xs text-gray-400 ml-1">last 30 days</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 text-xl">←</button>
+          <h1 className="text-xl font-bold text-gray-900">Calories</h1>
+          <span className="text-xs text-gray-400">last 30 days</span>
+        </div>
+        <div className="flex gap-1">
+          {[7, 30].map(d => (
+            <button
+              key={d}
+              onClick={() => setKpiDays(d)}
+              className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${kpiDays === d ? "bg-brand-500 text-white" : "text-gray-400 hover:text-gray-600"}`}
+            >{d}d</button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -185,15 +201,8 @@ export default function CaloriesHistory({ onBack }) {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2">
-            <KPI label="Avg burned / day" value={avgBurned ? `${avgBurned.toLocaleString()} kcal` : null} />
-            <KPI label="Avg consumed / day" value={avgConsumed ? `${avgConsumed.toLocaleString()} kcal` : null} />
-            <KPI
-              label="Avg daily balance"
-              value={avgBalance != null ? `${avgBalance > 0 ? "+" : ""}${avgBalance.toLocaleString()} kcal` : null}
-              color={avgBalance == null ? undefined : avgBalance < 0 ? "#22c55e" : "#f97316"}
-              sub={avgBalance < 0 ? "avg deficit" : avgBalance > 0 ? "avg surplus" : undefined}
-            />
-            <KPI label="Deficit / surplus days" value={daysWithData.length ? `${deficitDays}d / ${surplusDays}d` : null} sub="of logged days" />
+            <KPI label="Avg burned" value={avgBurned ? `${avgBurned.toLocaleString()} kcal` : null} />
+            <KPI label="Avg consumed" value={avgConsumed ? `${avgConsumed.toLocaleString()} kcal` : null} />
           </div>
 
           <CalendarHeatmap data={data} />

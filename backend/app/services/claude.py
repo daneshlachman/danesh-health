@@ -8,7 +8,49 @@ from app import db
 from app.models import WhoopData, NutritionLog, WeightLog, Workout, ChatMessage
 
 MODEL = "claude-sonnet-4-6"
-MAX_HISTORY = 20  # previous messages sent for context
+MAX_HISTORY_FOOD = 0
+MAX_HISTORY_DEFAULT = 8
+
+FOOD_KEYWORDS = {
+    "gegeten", "gedronken", "geëten", "ontbijt", "lunch", "diner", "avondeten",
+    "breakfast", "dinner", "snack", "ate", "drank", "drink", "eten", "drinken",
+    "kcal", "calorie", "macro", "protein", "eiwit", "gram", "portie", "brood",
+    "melk", "vlees", "kip", "vis", "rijst", "pasta", "groente", "fruit", "kaas",
+    "ei", "eieren", "yoghurt", "shake", "supplement", "whey", "creatine",
+}
+
+BRAND_KEYWORDS = {
+    "myprotein", "optimum nutrition", "bulk powders", "body & fit", "bodyfit",
+    "alpro", "oatly", "the protein works",
+    "albert heijn", " ah ", "lidl", "jumbo", "dirk", "aldi", "plus supermarkt",
+    "mcdonalds", "mcdonald's", "kfc", "burger king", "subway", "dominos", "domino's",
+    "starbucks", "dunkin",
+}
+
+WORKOUT_CONTEXT_KEYWORDS = {
+    "workout", "training", "gym", "gesport", "getrained", "krachttraining",
+    "push", "pull", "cardio", "fietsen", "hardlopen", "lopen", "zwemmen",
+    "sets", "reps", "bench", "squat", "deadlift", "spierpijn", "spier",
+    "garmin", "hevy", "oefening",
+    "hartslag", "hrv", "slaap", "sleep", "recovery", "whoop", "herstel",
+    "week", "maand", "trend", "vorige week", "gemiddeld", "statistiek",
+    "progressie", "resultaat", "verbrand", "over tijd",
+}
+
+
+def _is_food_message(text: str) -> bool:
+    lower = text.lower()
+    return any(kw in lower for kw in FOOD_KEYWORDS)
+
+
+def _is_branded_food(text: str) -> bool:
+    lower = text.lower()
+    return any(kw in lower for kw in BRAND_KEYWORDS)
+
+
+def _needs_rich_context(text: str) -> bool:
+    lower = text.lower()
+    return any(kw in lower for kw in WORKOUT_CONTEXT_KEYWORDS)
 
 
 HEIGHT_CM = 192
@@ -41,6 +83,12 @@ def calculate_tdee(user_id: str, today: date) -> str:
             cal = round(5 * weight_kg * (w.duration_minutes / 60))
             workout_kcal += cal
             workout_notes.append(f"{w.title} ~{cal} kcal (Hevy estimate)")
+        elif w.source == "whoop":
+            kj = (raw.get("score") or {}).get("kilojoule")
+            if kj:
+                cal = round(kj / 4.184)
+                workout_kcal += cal
+                workout_notes.append(f"{w.title} {cal} kcal (Whoop)")
 
     tdee = round(bmr + step_kcal + tef + workout_kcal)
     breakdown = f"BMR {round(bmr)} + steps {round(step_kcal)} + TEF {round(tef)}"
@@ -50,20 +98,29 @@ def calculate_tdee(user_id: str, today: date) -> str:
     return f"~{tdee} kcal ({breakdown})"
 
 
-def build_context(user_id: str) -> str:
+def build_context(user_id: str, user_message: str = "") -> str:
     today = date.today()
-    week_ago = today - timedelta(days=7)
+    rich = _needs_rich_context(user_message)
 
-    # Weight trend (7 days)
-    weights = (
-        WeightLog.query
-        .filter(WeightLog.user_id == user_id, WeightLog.date >= week_ago)
-        .order_by(WeightLog.date)
-        .all()
+    # Latest weight (always)
+    latest_weight = (
+        WeightLog.query.filter_by(user_id=user_id)
+        .order_by(WeightLog.date.desc()).first()
     )
-    weight_trend = " → ".join(f"{w.weight_kg}kg" for w in weights) if weights else "No data"
+    weight_str = f"{latest_weight.weight_kg}kg ({latest_weight.date})" if latest_weight else "No data"
 
-    # Today's Whoop data
+    # Weight trend — only when asking about workouts/trends
+    if rich:
+        week_ago = today - timedelta(days=7)
+        weights = (
+            WeightLog.query
+            .filter(WeightLog.user_id == user_id, WeightLog.date >= week_ago)
+            .order_by(WeightLog.date)
+            .all()
+        )
+        weight_str = " → ".join(f"{w.weight_kg}kg" for w in weights) if weights else weight_str
+
+    # Today's Whoop data (always, it's small)
     whoop = WhoopData.query.filter_by(user_id=user_id, date=today).first()
     whoop_str = "No data"
     if whoop:
@@ -72,72 +129,80 @@ def build_context(user_id: str) -> str:
             f"Resting HR: {whoop.resting_hr}bpm, Sleep: {whoop.sleep_duration_hours}h"
         )
 
-    # Today's nutrition
+    # Today's nutrition — show individual items so Claude knows exactly what's already logged
     nutrition = NutritionLog.query.filter_by(user_id=user_id, date=today).all()
     if nutrition:
         total_cal = sum(n.calories or 0 for n in nutrition)
         total_protein = sum(n.protein_g or 0 for n in nutrition)
         total_carbs = sum(n.carbs_g or 0 for n in nutrition)
         total_fat = sum(n.fat_g or 0 for n in nutrition)
+        items = ", ".join(f"{n.description} ({round(n.calories or 0)} kcal)" for n in nutrition)
         nutrition_str = (
-            f"{total_cal} kcal (protein: {total_protein}g, "
-            f"carbs: {total_carbs}g, fat: {total_fat}g)"
+            f"{round(total_cal)} kcal | P {round(total_protein)}g C {round(total_carbs)}g F {round(total_fat)}g\n"
+            f"Logged: {items}"
         )
     else:
         nutrition_str = "Nothing logged yet"
 
-    # Last 5 workouts with exercise details
-    workouts = (
-        Workout.query
-        .filter_by(user_id=user_id)
-        .order_by(Workout.date.desc())
-        .limit(5)
-        .all()
-    )
-    workout_lines = []
-    for w in workouts:
-        raw = w.raw_json or {}
-        exercises = raw.get("exercises", [])
-        ex_summary = []
-        for ex in exercises[:6]:
-            sets = ex.get("sets", [])
-            if sets:
-                top_set = max(sets, key=lambda s: (s.get("weight_kg") or 0))
-                ex_summary.append(
-                    f"{ex.get('title', '?')} {top_set.get('reps')}x{top_set.get('weight_kg')}kg"
-                )
-        detail = ", ".join(ex_summary) if ex_summary else "no detail"
-        dur = f"{w.duration_minutes}min " if w.duration_minutes else ""
-        workout_lines.append(f"{w.date} {w.title} ({dur}{detail})")
-    workout_str = "\n".join(workout_lines) if workout_lines else "No recent workouts"
-
     tdee_str = calculate_tdee(user_id, today)
-    tdee_line = f"Estimated TDEE today: {tdee_str}" if tdee_str else "TDEE: set up profile in Settings for TDEE tracking"
+    tdee_line = f"Estimated TDEE today: {tdee_str}"
 
-    return f"""Today: {today}
-Weight trend (7d): {weight_trend}
+    context = f"""Today: {today}
+Latest weight: {weight_str}
 Today's Whoop: {whoop_str}
 Today's nutrition so far: {nutrition_str}
-{tdee_line}
-Recent workouts: {workout_str}"""
+{tdee_line}"""
+
+    # Workout details — only when relevant
+    if rich:
+        workouts = (
+            Workout.query
+            .filter_by(user_id=user_id)
+            .order_by(Workout.date.desc())
+            .limit(5)
+            .all()
+        )
+        workout_lines = []
+        for w in workouts:
+            raw = w.raw_json or {}
+            exercises = raw.get("exercises", [])
+            ex_summary = []
+            for ex in exercises[:6]:
+                sets = ex.get("sets", [])
+                if sets:
+                    top_set = max(sets, key=lambda s: (s.get("weight_kg") or 0))
+                    ex_summary.append(
+                        f"{ex.get('title', '?')} {top_set.get('reps')}x{top_set.get('weight_kg')}kg"
+                    )
+            detail = ", ".join(ex_summary) if ex_summary else "no detail"
+            dur = f"{w.duration_minutes}min " if w.duration_minutes else ""
+            workout_lines.append(f"{w.date} {w.title} ({dur}{detail})")
+        workout_str = "\n".join(workout_lines) if workout_lines else "No recent workouts"
+        context += f"\nRecent workouts:\n{workout_str}"
+
+    return context
 
 
 WEB_SEARCH_TOOL = {"type": "web_search_20250305", "name": "web_search"}
 
 
-def _get_history(user_id: str) -> list[dict]:
+def _get_history(user_id: str, limit: int) -> list[dict]:
     messages = (
         ChatMessage.query
         .filter_by(user_id=user_id, date=date.today())
-        .order_by(ChatMessage.created_at.asc())
-        .limit(MAX_HISTORY)
+        .order_by(ChatMessage.created_at.desc())
+        .limit(limit)
         .all()
     )
+    messages.reverse()
     return [{"role": m.role, "content": m.content} for m in messages]
 
 
 def call_claude(user_id: str, user_message: str, context: str) -> str:
     client = anthropic.Anthropic(api_key=current_app.config["ANTHROPIC_API_KEY"])
+    is_food = _is_food_message(user_message)
+    tools = [WEB_SEARCH_TOOL] if _is_branded_food(user_message) else []
+    history_limit = MAX_HISTORY_FOOD if is_food else MAX_HISTORY_DEFAULT
 
     system_prompt = f"""You are a personal health coach with access to the user's health data. Today's snapshot:
 
@@ -161,15 +226,15 @@ Nutrition logging rules (follow strictly):
 - Only log when the user explicitly says they ate/drank something.
 Respond in the same language the user writes in. Be concise and data-driven."""
 
-    history = _get_history(user_id)
+    history = _get_history(user_id, history_limit)
     messages = history + [{"role": "user", "content": user_message}]
 
     while True:
         response = client.messages.create(
             model=MODEL,
-            max_tokens=2048,
+            max_tokens=1024,
             system=system_prompt,
-            tools=[WEB_SEARCH_TOOL],
+            tools=tools,
             messages=messages,
         )
 

@@ -77,6 +77,27 @@ function recoveryColor(score) {
   return "#ef4444";
 }
 
+function sleepColor(score) {
+  if (score == null) return "#9ca3af";
+  if (score >= 85) return "#22c55e";
+  if (score >= 70) return "#60a5fa";
+  return "#ef4444";
+}
+
+function rhrColor(bpm) {
+  if (bpm == null) return "#9ca3af";
+  if (bpm < 60) return "#22c55e";
+  if (bpm <= 62) return "#60a5fa";
+  return "#ef4444";
+}
+
+function hrvColor(ms) {
+  if (ms == null) return "#9ca3af";
+  if (ms > 60) return "#22c55e";
+  if (ms >= 55) return "#60a5fa";
+  return "#ef4444";
+}
+
 const toLocalISO = (d) => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -319,9 +340,9 @@ export default function Dashboard({ onNavigate }) {
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <div className="grid grid-cols-2 gap-4">
           <Ring value={whoop?.recovery_score} goal={100} label="Recovery" color={recoveryColor(whoop?.recovery_score)} showPct={false} unit="%" onClick={() => setHistoryTab("recovery")} />
-          <Ring value={whoop?.sleep_score} goal={100} label="Sleep" color="#a78bfa" showPct={false} unit="%" onClick={() => setHistoryTab("sleep")} />
-          <Ring value={whoop?.hrv_ms ? Math.round(whoop.hrv_ms) : null} goal={100} label="HRV (ms)" color="#60a5fa" showPct={false} unit="ms" unitBelow={true} onClick={() => setHistoryTab("recovery")} />
-          <Ring value={whoop?.resting_hr} goal={80} label="Resting HR" color="#fb7185" inverse={true} showPct={false} unit="bpm" unitBelow={true} onClick={() => setHistoryTab("recovery")} />
+          <Ring value={whoop?.sleep_score} goal={100} label="Sleep" color={sleepColor(whoop?.sleep_score)} showPct={false} unit="%" onClick={() => setHistoryTab("sleep")} />
+          <Ring value={whoop?.hrv_ms ? Math.round(whoop.hrv_ms) : null} goal={100} label="HRV (ms)" color={hrvColor(whoop?.hrv_ms)} showPct={false} unit="ms" unitBelow={true} onClick={() => setHistoryTab("recovery")} />
+          <Ring value={whoop?.resting_hr} goal={80} label="Resting HR" color={rhrColor(whoop?.resting_hr)} inverse={true} showPct={false} unit="bpm" unitBelow={true} onClick={() => setHistoryTab("recovery")} />
         </div>
       </div>
 

@@ -13,6 +13,84 @@ DATE_OF_BIRTH = date(1999, 10, 3)
 AVG_DAILY_STEPS = 10000
 
 
+def _naive(dt: datetime) -> datetime:
+    """Strip timezone info for consistent naive UTC comparison."""
+    return dt.replace(tzinfo=None) if dt.tzinfo else dt
+
+
+def _workout_window(w: Workout):
+    """Return (start_dt, end_dt) as naive UTC datetimes, or (None, None)."""
+    raw = w.raw_json or {}
+    try:
+        if w.source == "garmin":
+            start_str = raw.get("startTimeLocal") or raw.get("startTimeGMT", "")
+            start = _naive(datetime.fromisoformat(start_str.replace("Z", "+00:00").replace(" ", "T")))
+            duration_secs = raw.get("duration") or raw.get("movingDuration") or 0
+            return start, start + timedelta(seconds=duration_secs)
+        elif w.source == "hevy":
+            start_str = raw.get("start_time") or raw.get("created_at", "")
+            end_str = raw.get("end_time", "")
+            start = _naive(datetime.fromisoformat(start_str.replace("Z", "+00:00")))
+            end = _naive(datetime.fromisoformat(end_str.replace("Z", "+00:00")))
+            return start, end
+        elif w.source == "whoop":
+            start = _naive(datetime.fromisoformat(raw["start"].replace("Z", "+00:00")))
+            end = _naive(datetime.fromisoformat(raw["end"].replace("Z", "+00:00")))
+            return start, end
+    except (KeyError, ValueError, TypeError):
+        pass
+    return None, None
+
+
+def _overlaps(a_start, a_end, b_start, b_end, tolerance_minutes=10) -> bool:
+    if None in (a_start, a_end, b_start, b_end):
+        return False
+    tol = timedelta(minutes=tolerance_minutes)
+    return a_start < b_end + tol and a_end + tol > b_start
+
+
+WHOOP_STRENGTH_SPORT_IDS = {
+    44, 63, 70, 126, 164, 234, 304,  # weightlifting, functional fitness, crossfit, etc.
+}
+
+
+def _calc_workout_kcal(workouts: list, weight_kg: float) -> int:
+    """Sum workout calories, deduplicating overlapping sources (Garmin > Hevy > Whoop)."""
+    SOURCE_PRIORITY = {"garmin": 0, "hevy": 1, "whoop": 2}
+
+    entries = []
+    for w in workouts:
+        raw = w.raw_json or {}
+        cal = 0
+        if w.source == "garmin" and raw.get("calories"):
+            cal = raw["calories"]
+        elif w.source == "hevy" and w.duration_minutes:
+            cal = round(5 * weight_kg * (w.duration_minutes / 60))
+        elif w.source == "whoop":
+            kj = (raw.get("score") or {}).get("kilojoule")
+            if kj:
+                cal = round(kj / 4.184)
+        if cal:
+            start, end = _workout_window(w)
+            entries.append((SOURCE_PRIORITY.get(w.source, 9), start, end, cal, w))
+
+    # Sort by priority (lower = higher priority), then suppress time-overlapping lower-priority entries
+    entries.sort(key=lambda x: x[0])
+
+    accepted = []
+    total = 0
+    for priority, start, end, cal, w in entries:
+        shadowed = any(
+            _overlaps(start, end, a_start, a_end)
+            for _, a_start, a_end, _, _ in accepted
+        )
+        if not shadowed:
+            accepted.append((priority, start, end, cal, w))
+            total += cal
+
+    return total
+
+
 @profile_bp.route("/tdee/today", methods=["GET"])
 def tdee_today():
     date_str = request.args.get("date")
@@ -30,15 +108,9 @@ def tdee_today():
     tef = bmr * 0.10
     passive_total = bmr + step_kcal + tef
 
-    # Workout calories today
+    # Workout calories today (deduplicated across sources)
     todays_workouts = Workout.query.filter_by(user_id=USER_ID, date=today).all()
-    workout_kcal = 0
-    for w in todays_workouts:
-        raw = w.raw_json or {}
-        if w.source == "garmin" and raw.get("calories"):
-            workout_kcal += raw["calories"]
-        elif w.source == "hevy" and w.duration_minutes:
-            workout_kcal += round(5 * weight_kg * (w.duration_minutes / 60))
+    workout_kcal = _calc_workout_kcal(todays_workouts, weight_kg)
 
     tdee = round(passive_total + workout_kcal)
 
@@ -92,17 +164,12 @@ def calories_history():
         Workout.date >= start,
         Workout.date <= today
     ).all()
-    workout_by_day = {}
+    # Group workouts by day, then dedup per day
+    workouts_by_day: dict[str, list] = {}
     for w in workouts:
-        raw = w.raw_json or {}
-        cal = 0
-        if w.source == "garmin" and raw.get("calories"):
-            cal = raw["calories"]
-        elif w.source == "hevy" and w.duration_minutes:
-            cal = round(5 * weight_kg * (w.duration_minutes / 60))
-        if cal:
-            d = w.date.isoformat()
-            workout_by_day[d] = workout_by_day.get(d, 0) + cal
+        d = w.date.isoformat()
+        workouts_by_day.setdefault(d, []).append(w)
+    workout_by_day = {d: _calc_workout_kcal(ws, weight_kg) for d, ws in workouts_by_day.items()}
 
     # Consumed per day
     nutrition = NutritionLog.query.filter(
