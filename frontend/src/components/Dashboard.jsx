@@ -59,13 +59,8 @@ function Ring({ value, goal, label, color, size = 80, inverse = false, showPct =
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-sm font-bold text-gray-900 leading-none">
-            {value != null ? Math.round(value) : "—"}
+            {value != null ? Math.round(value) : "—"}{showPct ? <span className="text-[9px] font-normal text-gray-400 ml-0.5">%</span> : unit ? <span className="text-[9px] font-normal text-gray-400 ml-0.5">{unit}</span> : null}
           </span>
-          {showPct ? (
-            <span className="text-[9px] text-gray-400 leading-none mt-0.5">{Math.round(pct * 100)}%</span>
-          ) : unit ? (
-            <span className="text-[9px] text-gray-400 leading-none mt-0.5">{unit}</span>
-          ) : null}
         </div>
       </div>
       <span className="text-xs text-gray-500">{label}</span>
