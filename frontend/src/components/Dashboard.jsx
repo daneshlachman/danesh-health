@@ -399,19 +399,19 @@ export default function Dashboard() {
           <button onClick={() => setShowWeightHistory(true)} className="text-xs font-semibold text-gray-700 uppercase tracking-wide hover:text-brand-500 transition-colors">
             Weight ›
           </button>
-          <div className="flex items-center gap-2">
-            <select
-              value={weightDays}
-              onChange={e => handlePeriod(Number(e.target.value))}
-              className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500"
-            >
-              {PERIODS.map(({ label, days }) => (
-                <option key={days} value={days}>{label}</option>
-              ))}
-            </select>
+          <div className="flex items-center gap-1.5">
+            {[{ label: "1W", days: 7 }, { label: "1M", days: 30 }, { label: "3M", days: 90 }].map(({ label, days }) => (
+              <button
+                key={days}
+                onClick={() => handlePeriod(days)}
+                className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${weightDays === days ? "bg-brand-500 text-white" : "text-gray-400 hover:text-gray-600"}`}
+              >
+                {label}
+              </button>
+            ))}
             <button
               onClick={() => setAddingWeight(true)}
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-brand-500 text-white text-lg font-light hover:bg-brand-600 transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-brand-500 text-white text-lg font-light hover:bg-brand-600 transition-colors ml-1"
             >
               +
             </button>
