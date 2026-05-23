@@ -72,23 +72,17 @@ function FoodSearchModal({ meal, date, onClose, onSaved }) {
   useEffect(() => {
     if (query.length < 2) { setResults([]); return; }
 
-    // Lokale resultaten direct tonen
     const local = searchCommon(query);
     setResults(local);
 
-    // Open Food Facts op de achtergrond
     const timer = setTimeout(() => {
       setSearching(true);
-      fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=15&sort_by=unique_scans_n&fields=product_name,brands,nutriments&lc=nl`)
+      fetch(`${API}/api/food/search?q=${encodeURIComponent(query)}`)
         .then((r) => r.json())
         .then((data) => {
-          const off = (data.products || []).filter(
-            (p) => p.product_name && p.nutriments?.["energy-kcal_100g"]
-          );
-          // Lokale resultaten bovenaan, OFF eronder (zonder dubbelen)
           const localNames = new Set(local.map((f) => f.product_name));
-          const combined = [...local, ...off.filter((p) => !localNames.has(p.product_name))];
-          setResults(combined);
+          const remote = data.filter((f) => !localNames.has(f.name));
+          setResults([...local, ...remote]);
         })
         .catch(console.error)
         .finally(() => setSearching(false));
@@ -98,17 +92,22 @@ function FoodSearchModal({ meal, date, onClose, onSaved }) {
 
   const g = parseFloat(grams) || 0;
   const factor = g / 100;
-  const n = selected?.nutriments || {};
-  const calories = Math.round((n["energy-kcal_100g"] || 0) * factor);
-  const protein = Math.round((n.proteins_100g || 0) * factor * 10) / 10;
-  const carbs = Math.round((n.carbohydrates_100g || 0) * factor * 10) / 10;
-  const fat = Math.round((n.fat_100g || 0) * factor * 10) / 10;
+  // Support both local NEVO format and FatSecret format
+  const cal100 = selected?.calories_100g ?? selected?.nutriments?.["energy-kcal_100g"] ?? 0;
+  const pro100 = selected?.protein_100g ?? selected?.nutriments?.proteins_100g ?? 0;
+  const carb100 = selected?.carbs_100g ?? selected?.nutriments?.carbohydrates_100g ?? 0;
+  const fat100 = selected?.fat_100g ?? selected?.nutriments?.fat_100g ?? 0;
+  const calories = Math.round(cal100 * factor);
+  const protein = Math.round(pro100 * factor * 10) / 10;
+  const carbs = Math.round(carb100 * factor * 10) / 10;
+  const fat = Math.round(fat100 * factor * 10) / 10;
 
   const save = () => {
     if (!selected || !g) return;
     setSaving(true);
-    const brand = selected.brands?.split(",")[0].trim();
-    const description = `${selected.product_name}${brand ? ` (${brand})` : ""} ${g}g`;
+    const name = selected.name || selected.product_name || "";
+    const brand = selected.brand || selected.brands?.split(",")[0].trim() || "";
+    const description = `${name}${brand ? ` (${brand})` : ""} ${g}g`;
     fetch(`${API}/api/nutrition`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -148,10 +147,10 @@ function FoodSearchModal({ meal, date, onClose, onSaved }) {
                     onClick={() => { setSelected(p); setGrams("100"); }}
                     className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
                   >
-                    <p className="text-sm font-medium text-gray-800 leading-tight">{p.product_name}</p>
+                    <p className="text-sm font-medium text-gray-800 leading-tight">{p.name || p.product_name}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {p.brands?.split(",")[0].trim() && `${p.brands.split(",")[0].trim()} · `}
-                      {Math.round(p.nutriments["energy-kcal_100g"])} kcal / 100g
+                      {(p.brand || p.brands?.split(",")[0].trim()) && `${p.brand || p.brands.split(",")[0].trim()} · `}
+                      {Math.round(p.calories_100g ?? p.nutriments?.["energy-kcal_100g"] ?? 0)} kcal / 100g
                     </p>
                   </button>
                 </li>
@@ -163,7 +162,7 @@ function FoodSearchModal({ meal, date, onClose, onSaved }) {
             <button onClick={() => setSelected(null)} className="text-xs text-brand-500 mb-3 flex items-center gap-1">
               ‹ Back
             </button>
-            <p className="text-sm font-semibold text-gray-800 mb-4 leading-tight">{selected.product_name}</p>
+            <p className="text-sm font-semibold text-gray-800 mb-4 leading-tight">{selected.name || selected.product_name}</p>
 
             <div className="flex items-center gap-3 mb-4">
               <span className="text-sm text-gray-600">Amount</span>

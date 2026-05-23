@@ -21,6 +21,7 @@ def create_app(config_name=None):
         "http://localhost:5173",
     ]))
 
+    from app.routes.food import food_bp
     from app.routes.chat import chat_bp
     from app.routes.nutrition import nutrition_bp
     from app.routes.weight import weight_bp
@@ -29,6 +30,7 @@ def create_app(config_name=None):
     from app.routes.whoop_auth import whoop_bp
     from app.routes.profile import profile_bp
 
+    app.register_blueprint(food_bp, url_prefix="/api")
     app.register_blueprint(chat_bp, url_prefix="/api")
     app.register_blueprint(nutrition_bp, url_prefix="/api")
     app.register_blueprint(weight_bp, url_prefix="/api")

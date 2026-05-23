@@ -26,6 +26,10 @@ class BaseConfig:
     # Hevy
     HEVY_API_KEY = os.environ.get("HEVY_API_KEY", "")
 
+    # FatSecret
+    FATSECRET_KEY = os.environ.get("FATSECRET_KEY", "")
+    FATSECRET_SECRET = os.environ.get("FATSECRET_SECRET", "")
+
     # MyFitnessPal
     MFP_USERNAME = os.environ.get("MFP_USERNAME", "")
     MFP_PASSWORD = os.environ.get("MFP_PASSWORD", "")
