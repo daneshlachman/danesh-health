@@ -1,85 +1,66 @@
-import re
 import requests
 from flask import Blueprint, request, jsonify, current_app
-from requests_oauthlib import OAuth1
 
 food_bp = Blueprint("food", __name__)
 
+USDA_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
+OFF_URL = "https://world.openfoodfacts.org/cgi/search.pl"
 
-def _parse_description(desc):
-    """Parse FatSecret food_description to per-100g macros.
-    Handles: 'Per 100g', 'Per 30g', 'Per 1 serving (30g)', 'Per 1 oz (28g)' etc.
-    """
-    # Try direct gram amount first: "Per 100g" or "Per 30.5g"
-    m = re.search(r"Per\s+([\d.]+)\s*g\s*-", desc)
-    if not m:
-        # Try parenthesised: "Per 1 serving (30g)" or "Per 1 oz (28.3g)"
-        m = re.search(r"\(([\d.]+)\s*g\)", desc)
-    if not m:
-        return None
-
-    serving_g = float(m.group(1))
-    if serving_g <= 0:
-        return None
-
-    cal = re.search(r"Calories:\s*([\d.]+)", desc)
-    fat = re.search(r"Fat:\s*([\d.]+)", desc)
-    carbs = re.search(r"Carbs:\s*([\d.]+)", desc)
-    protein = re.search(r"Protein:\s*([\d.]+)", desc)
-
-    if not all([cal, fat, carbs, protein]):
-        return None
-
-    f = 100 / serving_g
-    return {
-        "calories_100g": round(float(cal.group(1)) * f, 1),
-        "protein_100g": round(float(protein.group(1)) * f, 2),
-        "carbs_100g": round(float(carbs.group(1)) * f, 2),
-        "fat_100g": round(float(fat.group(1)) * f, 2),
-    }
+NUTRIENT_IDS = {
+    "calories": 1008,
+    "protein": 1003,
+    "carbs": 1005,
+    "fat": 1004,
+}
 
 
-def _search_fatsecret(query, auth):
+def _get_nutrient(nutrients, nutrient_id):
+    for n in nutrients:
+        if n.get("nutrientId") == nutrient_id:
+            return round(n.get("value") or 0, 2)
+    return 0
+
+
+def _search_usda(query, api_key):
     try:
         resp = requests.get(
-            "https://platform.fatsecret.com/rest/server.api",
-            auth=auth,
+            USDA_URL,
             params={
-                "method": "foods.search",
-                "search_expression": query,
-                "format": "json",
-                "max_results": 20,
+                "query": query,
+                "api_key": api_key,
+                "pageSize": 15,
+                "dataType": "Branded,Foundation,SR Legacy",
             },
             timeout=8,
         )
         resp.raise_for_status()
-        data = resp.json()
+        foods = resp.json().get("foods", [])
     except Exception as e:
-        current_app.logger.error(f"FatSecret error: {e}")
+        current_app.logger.error(f"USDA error: {e}")
         return []
-
-    foods = data.get("foods", {}).get("food", [])
-    if isinstance(foods, dict):
-        foods = [foods]
 
     results = []
     for f in foods:
-        macros = _parse_description(f.get("food_description", ""))
-        if not macros:
+        nutrients = f.get("foodNutrients", [])
+        kcal = _get_nutrient(nutrients, NUTRIENT_IDS["calories"])
+        if not kcal:
             continue
         results.append({
-            "name": f.get("food_name", ""),
-            "brand": f.get("brand_name", ""),
-            **macros,
+            "name": f.get("description", ""),
+            "brand": f.get("brandOwner", "") or f.get("brandName", ""),
+            "calories_100g": kcal,
+            "protein_100g": _get_nutrient(nutrients, NUTRIENT_IDS["protein"]),
+            "carbs_100g": _get_nutrient(nutrients, NUTRIENT_IDS["carbs"]),
+            "fat_100g": _get_nutrient(nutrients, NUTRIENT_IDS["fat"]),
         })
     return results
 
 
 def _search_off(query):
-    """Open Food Facts fallback — good for branded supplements and packaged products."""
+    """Open Food Facts — goed voor Europese/Nederlandse verpakte producten."""
     try:
         resp = requests.get(
-            "https://world.openfoodfacts.org/cgi/search.pl",
+            OFF_URL,
             params={
                 "search_terms": query,
                 "json": 1,
@@ -118,20 +99,16 @@ def food_search():
     if not query:
         return jsonify([])
 
-    auth = OAuth1(
-        current_app.config["FATSECRET_KEY"],
-        current_app.config["FATSECRET_SECRET"],
-    )
+    api_key = current_app.config.get("USDA_API_KEY", "DEMO_KEY")
 
-    fs_results = _search_fatsecret(query, auth)
+    usda = _search_usda(query, api_key)
+    seen = {r["name"].lower() for r in usda}
 
-    # Als FatSecret weinig oplevert, vul aan met Open Food Facts
-    if len(fs_results) < 3:
-        off_results = _search_off(query)
-        seen = {r["name"].lower() for r in fs_results}
-        for r in off_results:
+    # Vul aan met OFF voor Europese/branded producten die USDA mist
+    if len(usda) < 5:
+        for r in _search_off(query):
             if r["name"].lower() not in seen:
-                fs_results.append(r)
+                usda.append(r)
                 seen.add(r["name"].lower())
 
-    return jsonify(fs_results)
+    return jsonify(usda)
