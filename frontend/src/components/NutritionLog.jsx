@@ -58,7 +58,142 @@ function MiniCalendar({ selected, onSelect, onClose }) {
 
 const GOALS = { calories: 2400, protein_g: 180, carbs_g: 240, fat_g: 80 };
 const MEAL_ORDER = ["breakfast", "lunch", "dinner", "snack"];
-const MEAL_LABELS = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack" };
+const MEAL_LABELS = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snacks" };
+
+function FoodSearchModal({ meal, date, onClose, onSaved }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [grams, setGrams] = useState("100");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (query.length < 2) { setResults([]); return; }
+    const timer = setTimeout(() => {
+      setSearching(true);
+      fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=15&fields=product_name,brands,nutriments&lc=nl`)
+        .then((r) => r.json())
+        .then((data) => setResults((data.products || []).filter((p) => p.product_name && p.nutriments?.["energy-kcal_100g"])))
+        .catch(console.error)
+        .finally(() => setSearching(false));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const g = parseFloat(grams) || 0;
+  const factor = g / 100;
+  const n = selected?.nutriments || {};
+  const calories = Math.round((n["energy-kcal_100g"] || 0) * factor);
+  const protein = Math.round((n.proteins_100g || 0) * factor * 10) / 10;
+  const carbs = Math.round((n.carbohydrates_100g || 0) * factor * 10) / 10;
+  const fat = Math.round((n.fat_100g || 0) * factor * 10) / 10;
+
+  const save = () => {
+    if (!selected || !g) return;
+    setSaving(true);
+    const brand = selected.brands?.split(",")[0].trim();
+    const description = `${selected.product_name}${brand ? ` (${brand})` : ""} ${g}g`;
+    fetch(`${API}/api/nutrition`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date, meal_type: meal, description, calories, protein_g: protein, carbs_g: carbs, fat_g: fat }),
+    })
+      .then((r) => r.json())
+      .then((entry) => { onSaved(entry); onClose(); })
+      .catch(console.error)
+      .finally(() => setSaving(false));
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/20" onClick={onClose}>
+      <div className="bg-white rounded-t-2xl w-full max-w-lg shadow-xl p-4 pb-10" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-700">Add to {MEAL_LABELS[meal]}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+        </div>
+
+        {!selected ? (
+          <>
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search food…"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            {searching && <p className="text-xs text-gray-400 mt-3 text-center">Searching…</p>}
+            {!searching && query.length >= 2 && results.length === 0 && (
+              <p className="text-xs text-gray-400 mt-3 text-center">No results found.</p>
+            )}
+            <ul className="mt-2 space-y-0.5 max-h-72 overflow-y-auto">
+              {results.map((p, i) => (
+                <li key={i}>
+                  <button
+                    onClick={() => { setSelected(p); setGrams("100"); }}
+                    className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    <p className="text-sm font-medium text-gray-800 leading-tight">{p.product_name}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {p.brands?.split(",")[0].trim() && `${p.brands.split(",")[0].trim()} · `}
+                      {Math.round(p.nutriments["energy-kcal_100g"])} kcal / 100g
+                    </p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <>
+            <button onClick={() => setSelected(null)} className="text-xs text-brand-500 mb-3 flex items-center gap-1">
+              ‹ Back
+            </button>
+            <p className="text-sm font-semibold text-gray-800 mb-4 leading-tight">{selected.product_name}</p>
+
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-sm text-gray-600">Amount</span>
+              <input
+                autoFocus
+                type="number"
+                value={grams}
+                onChange={(e) => setGrams(e.target.value)}
+                className="w-24 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+              <span className="text-sm text-gray-400">g</span>
+            </div>
+
+            <div className="flex gap-2 mb-5 bg-gray-50 rounded-xl p-3">
+              <div className="flex-1 text-center">
+                <p className="text-sm font-bold text-gray-900">{calories}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">kcal</p>
+              </div>
+              <div className="flex-1 text-center">
+                <p className="text-sm font-bold text-blue-500">{protein}g</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">protein</p>
+              </div>
+              <div className="flex-1 text-center">
+                <p className="text-sm font-bold text-amber-500">{carbs}g</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">carbs</p>
+              </div>
+              <div className="flex-1 text-center">
+                <p className="text-sm font-bold text-rose-500">{fat}g</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">fat</p>
+              </div>
+            </div>
+
+            <button
+              onClick={save}
+              disabled={saving || !g}
+              className="w-full bg-brand-500 text-white rounded-xl py-2.5 text-sm font-medium disabled:opacity-40 hover:bg-brand-600 transition-colors"
+            >
+              {saving ? "Saving…" : `Add to ${MEAL_LABELS[meal]}`}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function Ring({ value, goal, label, color, size = 80, showPct = true, unit = "" }) {
   const r = (size - 10) / 2;
@@ -90,9 +225,7 @@ function Ring({ value, goal, label, color, size = 80, showPct = true, unit = "" 
   );
 }
 
-function MealSection({ meal, entries, onDelete }) {
-  if (entries.length === 0) return null;
-
+function MealSection({ meal, entries, onDelete, onAdd }) {
   const total = entries.reduce(
     (acc, e) => ({
       calories: acc.calories + (e.calories || 0),
@@ -109,30 +242,44 @@ function MealSection({ meal, entries, onDelete }) {
         <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
           {MEAL_LABELS[meal] || meal}
         </span>
-        <span className="text-xs text-gray-400">{Math.round(total.calories)} kcal</span>
+        <div className="flex items-center gap-2">
+          {entries.length > 0 && <span className="text-xs text-gray-400">{Math.round(total.calories)} kcal</span>}
+          <button
+            onClick={onAdd}
+            className="w-6 h-6 flex items-center justify-center rounded-full bg-brand-500 text-white text-base leading-none hover:bg-brand-600 transition-colors"
+          >
+            +
+          </button>
+        </div>
       </div>
 
-      <ul className="divide-y divide-gray-50">
-        {entries.map((entry) => (
-          <li key={entry.id} className="flex items-start gap-2 px-4 py-2.5">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-800">{entry.description}</p>
-              <div className="flex gap-3 mt-0.5">
-                <span className="text-xs font-medium text-gray-600">{Math.round(entry.calories ?? 0)} kcal</span>
-                <span className="text-xs text-blue-500">P {Math.round(entry.protein_g ?? 0)}g</span>
-                <span className="text-xs text-amber-500">C {Math.round(entry.carbs_g ?? 0)}g</span>
-                <span className="text-xs text-rose-500">F {Math.round(entry.fat_g ?? 0)}g</span>
+      {entries.length === 0 ? (
+        <div className="px-4 py-3">
+          <p className="text-xs text-gray-300">Nothing logged yet</p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-gray-50">
+          {entries.map((entry) => (
+            <li key={entry.id} className="flex items-start gap-2 px-4 py-2.5">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-800">{entry.description}</p>
+                <div className="flex gap-3 mt-0.5">
+                  <span className="text-xs font-medium text-gray-600">{Math.round(entry.calories ?? 0)} kcal</span>
+                  <span className="text-xs text-blue-500">P {Math.round(entry.protein_g ?? 0)}g</span>
+                  <span className="text-xs text-amber-500">C {Math.round(entry.carbs_g ?? 0)}g</span>
+                  <span className="text-xs text-rose-500">F {Math.round(entry.fat_g ?? 0)}g</span>
+                </div>
               </div>
-            </div>
-            <button
-              onClick={() => onDelete(entry.id)}
-              className="text-gray-300 hover:text-red-400 text-base leading-none mt-1 shrink-0"
-            >
-              ×
-            </button>
-          </li>
-        ))}
-      </ul>
+              <button
+                onClick={() => onDelete(entry.id)}
+                className="text-gray-300 hover:text-red-400 text-base leading-none mt-1 shrink-0"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {entries.length > 1 && (
         <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100 flex gap-4">
@@ -152,7 +299,8 @@ export default function NutritionLog() {
   const [date, setDate] = useState(todayISO);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showKcal, setShowKcal] = useState(null); // 'protein' | 'carbs' | 'fat' | null
+  const [showKcal, setShowKcal] = useState(null);
+  const [addingTo, setAddingTo] = useState(null); // meal type or null
 
   const toggleMacro = (macro) => setShowKcal(prev => prev === macro ? null : macro);
 
@@ -189,6 +337,10 @@ export default function NutritionLog() {
     fetch(`${API}/api/nutrition/${id}`, { method: "DELETE" })
       .then(() => setLogs((prev) => prev.filter((l) => l.id !== id)))
       .catch(console.error);
+  };
+
+  const handleSaved = (entry) => {
+    setLogs((prev) => [...prev, entry]);
   };
 
   return (
@@ -261,14 +413,18 @@ export default function NutritionLog() {
             meal={meal}
             entries={byMeal[meal]}
             onDelete={handleDelete}
+            onAdd={() => setAddingTo(meal)}
           />
         ))
       )}
 
-      {!loading && logs.length === 0 && (
-        <p className="text-center text-gray-400 py-8 text-sm">
-          Nothing logged yet. Tell Claude what you ate in the Chat tab.
-        </p>
+      {addingTo && (
+        <FoodSearchModal
+          meal={addingTo}
+          date={date}
+          onClose={() => setAddingTo(null)}
+          onSaved={handleSaved}
+        />
       )}
     </div>
   );
