@@ -28,24 +28,25 @@ def chat():
         return jsonify({"error": "message is required"}), 400
 
     user = _ensure_user()
-    today = date_type.today()
+    date_str = body.get("date")
+    target_date = date_type.fromisoformat(date_str) if date_str else date_type.today()
 
     # Persist user message
-    user_msg = ChatMessage(user_id=user.id, role="user", content=user_message, date=today)
+    user_msg = ChatMessage(user_id=user.id, role="user", content=user_message, date=target_date)
     db.session.add(user_msg)
     db.session.commit()
 
     # Build health context and call Claude
-    context = build_context(user.id, user_message)
-    reply = call_claude(user.id, user_message, context)
+    context = build_context(user.id, user_message, target_date)
+    reply = call_claude(user.id, user_message, context, target_date)
 
     # Persist assistant reply
-    assistant_msg = ChatMessage(user_id=user.id, role="assistant", content=reply, date=today)
+    assistant_msg = ChatMessage(user_id=user.id, role="assistant", content=reply, date=target_date)
     db.session.add(assistant_msg)
     db.session.commit()
 
     # Extract and save any nutrition mentioned in the conversation
-    nutrition_logged = extract_nutrition(user.id, reply)
+    nutrition_logged = extract_nutrition(user.id, reply, target_date)
 
     return jsonify({
         "message": reply,

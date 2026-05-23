@@ -266,6 +266,7 @@ def sync(user_id: str) -> dict:
 
     # Sync Whoop workouts
     workouts_synced = 0
+    workouts_deleted = 0
     try:
         workout_records = _fetch_all_pages(access_token, "/activity/workout", {"start": start, "end": end})
         existing_whoop_ids = {
@@ -273,6 +274,8 @@ def sync(user_id: str) -> dict:
             for w in Workout.query.filter_by(user_id=user_id, source="whoop").all()
             if w.raw_json
         }
+
+        seen_ids = set()
         for wo in workout_records:
             wo_id = wo.get("id")
             if not wo_id:
@@ -281,14 +284,13 @@ def sync(user_id: str) -> dict:
             sport_name = wo.get("sport_name", "").lower()
             SKIP_SPORT_NAMES = {"activity", "walking", "commuting"}
             if sport_name in SKIP_SPORT_NAMES or sport_id in SKIP_SPORT_IDS:
+                seen_ids.add(wo_id)  # still mark as seen so we don't delete it
                 continue
-            # Capitalize for display
             display_name = sport_name.replace("_", " ").title() if sport_name else f"Sport {sport_id}"
             try:
                 start_dt = datetime.fromisoformat(wo["start"].replace("Z", "+00:00"))
                 end_dt = datetime.fromisoformat(wo["end"].replace("Z", "+00:00"))
                 duration = int((end_dt - start_dt).total_seconds() / 60)
-                # Use timezone_offset to get the correct local date
                 tz_str = wo.get("timezone_offset", "+00:00")
                 sign = 1 if tz_str[0] != "-" else -1
                 tz_parts = tz_str.lstrip("+-").split(":")
@@ -300,6 +302,7 @@ def sync(user_id: str) -> dict:
             except (KeyError, ValueError):
                 continue
 
+            seen_ids.add(wo_id)
             existing = existing_whoop_ids.get(wo_id)
             if existing:
                 existing.title = display_name
@@ -316,6 +319,13 @@ def sync(user_id: str) -> dict:
                     raw_json=wo,
                 ))
             workouts_synced += 1
+
+        # Delete Whoop workouts that no longer exist in Whoop (deleted by user)
+        for wo_id, w in existing_whoop_ids.items():
+            if wo_id not in seen_ids:
+                db.session.delete(w)
+                workouts_deleted += 1
+
     except Exception as e:
         current_app.logger.warning(f"Whoop workout sync failed: {e}")
 
@@ -325,4 +335,5 @@ def sync(user_id: str) -> dict:
         "days_synced": upserted,
         "weight_synced": weight_synced,
         "workouts_synced": workouts_synced,
+        "workouts_deleted": workouts_deleted,
     }

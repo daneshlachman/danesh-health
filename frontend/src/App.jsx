@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Dashboard from "./components/Dashboard";
 import NutritionLog from "./components/NutritionLog";
 import Chat from "./components/Chat";
@@ -12,6 +12,12 @@ const TABS = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  // Warmup ping — fires immediately so the container starts heating up.
+  // Response is intentionally ignored; this just breaks the cold-start silence.
+  useEffect(() => {
+    fetch("/health").catch(() => {});
+  }, []);
 
   return (
     <div className="flex flex-col bg-gray-50" style={{ height: "100svh" }}>

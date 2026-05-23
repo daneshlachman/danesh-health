@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { cachedFetch, getCached, setCache } from "../utils/cache";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
@@ -211,11 +212,15 @@ export default function Dashboard({ onNavigate }) {
     setDate(toLocalISO(d));
   };
 
+  const parseWeights = (weights) =>
+    weights.map((w) => ({ date: w.date.slice(5), kg: w.weight_kg }));
+
   const fetchWeight = (days) => {
-    fetch(`/api/weight?days=${days}`)
-      .then((r) => r.json())
-      .then((weights) => setWeightData(weights.map((w) => ({ date: w.date.slice(5), kg: w.weight_kg }))))
-      .catch(console.error);
+    cachedFetch(
+      `/api/weight?days=${days}`,
+      `weight-${days}`,
+      (weights) => setWeightData(parseWeights(weights)),
+    );
   };
 
   const handlePeriod = (days) => {
@@ -223,14 +228,25 @@ export default function Dashboard({ onNavigate }) {
     fetchWeight(days);
   };
 
-  // Reload whoop + tdee when date changes
+  // Reload whoop + tdee when date changes — show cached immediately, refresh in background
+  const dateRef = useRef(date);
   useEffect(() => {
-    setWhoop(null);
-    setTdee(null);
+    dateRef.current = date;
+    const whoopKey = `whoop-today-${date}`;
+    const tdeeKey = `tdee-today-${date}`;
+
+    const cached = getCached(whoopKey);
+    if (cached && !cached.error) setWhoop(cached); else setWhoop(null);
+    const cachedTdee = getCached(tdeeKey);
+    if (cachedTdee) setTdee(cachedTdee); else setTdee(null);
+
     Promise.all([
       fetch(`/api/whoop/today?date=${date}`).then((r) => r.json()),
       fetch(`/api/tdee/today?date=${date}`).then((r) => r.json()),
     ]).then(([whoopData, tdeeData]) => {
+      if (dateRef.current !== date) return; // navigated away
+      setCache(whoopKey, whoopData);
+      setCache(tdeeKey, tdeeData);
       if (whoopData && !whoopData.error) setWhoop(whoopData);
       setTdee(tdeeData);
     }).catch(console.error);
@@ -244,12 +260,23 @@ export default function Dashboard({ onNavigate }) {
       return;
     }
 
-    Promise.all([
-      fetch(`/api/weight?days=${weightDays}`).then((r) => r.json()),
-      fetch("/api/whoop/status").then((r) => r.json()),
-    ])
-      .then(([weights, status]) => {
-        setWeightData(weights.map((w) => ({ date: w.date.slice(5), kg: w.weight_kg })));
+    // Show cached weight immediately, then load fresh
+    const cachedStatus = getCached("whoop-status");
+    if (cachedStatus) {
+      setWhoopConnected(cachedStatus.connected);
+      setLoading(false);
+    }
+
+    cachedFetch(
+      `/api/weight?days=${weightDays}`,
+      `weight-${weightDays}`,
+      (weights) => setWeightData(parseWeights(weights)),
+    );
+
+    fetch("/api/whoop/status")
+      .then((r) => r.json())
+      .then((status) => {
+        setCache("whoop-status", status);
         setWhoopConnected(status.connected);
         if (status.connected) {
           const lastSync = parseInt(localStorage.getItem("lastWhoopSync") || "0");
@@ -271,7 +298,9 @@ export default function Dashboard({ onNavigate }) {
           fetch(`/api/weight?days=${weightDays}`).then((r) => r.json()),
           fetch("/api/whoop/today").then((r) => r.json()),
         ]);
-        setWeightData(weights.map((w) => ({ date: w.date.slice(5), kg: w.weight_kg })));
+        setCache(`weight-${weightDays}`, weights);
+        setCache(`whoop-today-${todayISO}`, today);
+        setWeightData(parseWeights(weights));
         if (today && !today.error) setWhoop(today);
         setWhoopConnected(true);
       }
@@ -431,7 +460,7 @@ export default function Dashboard({ onNavigate }) {
             })()}
           </div>
           <div className="flex items-center gap-1.5">
-            {[{ label: "1W", days: 7 }, { label: "1M", days: 30 }, { label: "2M", days: 60 }, { label: "3M", days: 90 }, { label: "6M", days: 180 }].map(({ label, days }) => (
+            {[{ label: "1W", days: 7 }, { label: "1M", days: 30 }, { label: "2M", days: 60 }, { label: "3M", days: 90 }].map(({ label, days }) => (
               <button
                 key={days}
                 onClick={() => handlePeriod(days)}

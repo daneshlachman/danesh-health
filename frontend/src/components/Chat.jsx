@@ -140,7 +140,7 @@ export default function Chat() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, date }),
       });
       const data = await res.json();
       setMessages((prev) => [
@@ -215,18 +215,13 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      {!isToday && (
-        <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 text-center text-xs text-gray-400">
-          Viewing {dateLabel(date)} — go to Today to chat
-        </div>
-      )}
-      <div className={`border-t border-gray-100 bg-white px-4 py-3 flex gap-2 ${!isToday ? "hidden" : ""}`}>
+      <div className="border-t border-gray-100 bg-white px-4 py-3 flex gap-2">
         <textarea
           rows={1}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
-          placeholder="Tell Claude what you ate or ask a question…"
+          placeholder="Ask a question…"
           className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           style={{ maxHeight: "120px" }}
         />

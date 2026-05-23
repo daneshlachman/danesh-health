@@ -23,7 +23,7 @@ def _workout_window(w: Workout):
     raw = w.raw_json or {}
     try:
         if w.source == "garmin":
-            start_str = raw.get("startTimeLocal") or raw.get("startTimeGMT", "")
+            start_str = raw.get("startTimeGMT") or raw.get("startTimeLocal", "")
             start = _naive(datetime.fromisoformat(start_str.replace("Z", "+00:00").replace(" ", "T")))
             duration_secs = raw.get("duration") or raw.get("movingDuration") or 0
             return start, start + timedelta(seconds=duration_secs)

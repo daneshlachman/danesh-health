@@ -98,8 +98,8 @@ def calculate_tdee(user_id: str, today: date) -> str:
     return f"~{tdee} kcal ({breakdown})"
 
 
-def build_context(user_id: str, user_message: str = "") -> str:
-    today = date.today()
+def build_context(user_id: str, user_message: str = "", target_date: date = None) -> str:
+    today = target_date or date.today()
     rich = _needs_rich_context(user_message)
 
     # Latest weight (always)
@@ -186,10 +186,11 @@ Today's nutrition so far: {nutrition_str}
 WEB_SEARCH_TOOL = {"type": "web_search_20250305", "name": "web_search"}
 
 
-def _get_history(user_id: str, limit: int) -> list[dict]:
+def _get_history(user_id: str, limit: int, target_date: date = None) -> list[dict]:
+    d = target_date or date.today()
     messages = (
         ChatMessage.query
-        .filter_by(user_id=user_id, date=date.today())
+        .filter_by(user_id=user_id, date=d)
         .order_by(ChatMessage.created_at.desc())
         .limit(limit)
         .all()
@@ -198,7 +199,7 @@ def _get_history(user_id: str, limit: int) -> list[dict]:
     return [{"role": m.role, "content": m.content} for m in messages]
 
 
-def call_claude(user_id: str, user_message: str, context: str) -> str:
+def call_claude(user_id: str, user_message: str, context: str, target_date: date = None) -> str:
     client = anthropic.Anthropic(api_key=current_app.config["ANTHROPIC_API_KEY"])
     is_food = _is_food_message(user_message)
     tools = [WEB_SEARCH_TOOL] if _is_branded_food(user_message) else []
@@ -208,13 +209,14 @@ def call_claude(user_id: str, user_message: str, context: str) -> str:
 
 {context}
 
-When the user mentions food they ate, log EACH food item as a separate entry. Append a JSON array at the very end of your response (after your full reply):
+When the user mentions food they ate, output the JSON array FIRST (before your text reply):
 ```json
 [
   {{"log_nutrition": true, "meal_type": "lunch", "description": "1 sneetje bruinbrood", "calories": 80, "protein_g": 3.0, "carbs_g": 14.0, "fat_g": 1.0}},
   {{"log_nutrition": true, "meal_type": "lunch", "description": "3 volkoren knäckebröd", "calories": 174, "protein_g": 4.5, "carbs_g": 33.0, "fat_g": 1.5}}
 ]
 ```
+Then write your reply after the JSON block.
 Nutrition logging rules (follow strictly):
 - One JSON entry per individual food item or drink — never combine multiple foods into one entry.
 - Use correct meal_type: breakfast / lunch / dinner / snack.
@@ -226,13 +228,13 @@ Nutrition logging rules (follow strictly):
 - Only log when the user explicitly says they ate/drank something.
 Respond in the same language the user writes in. Be concise and data-driven."""
 
-    history = _get_history(user_id, history_limit)
+    history = _get_history(user_id, history_limit, target_date)
     messages = history + [{"role": "user", "content": user_message}]
 
     while True:
         response = client.messages.create(
             model=MODEL,
-            max_tokens=1024,
+            max_tokens=2048 if is_food else 1024,
             system=system_prompt,
             tools=tools,
             messages=messages,
@@ -256,7 +258,7 @@ Respond in the same language the user writes in. Be concise and data-driven."""
             return "\n".join(b.text for b in text_blocks) if text_blocks else ""
 
 
-def extract_nutrition(user_id: str, assistant_reply: str) -> bool:
+def extract_nutrition(user_id: str, assistant_reply: str, target_date: date = None) -> bool:
     """Parse nutrition JSON array (or single object) from Claude's reply and persist."""
     # Match array or single object inside a code block, or bare
     code_block = re.search(r'```(?:json)?\s*(\[.*?\]|\{.*?\})\s*```', assistant_reply, re.DOTALL)
@@ -286,7 +288,7 @@ def extract_nutrition(user_id: str, assistant_reply: str) -> bool:
             continue
         log = NutritionLog(
             user_id=user_id,
-            date=date.today(),
+            date=target_date or date.today(),
             meal_type=item.get("meal_type"),
             description=item.get("description", ""),
             calories=item.get("calories"),
