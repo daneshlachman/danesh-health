@@ -16,7 +16,10 @@ def create_app(config_name=None):
 
     db.init_app(app)
     migrate.init_app(app, db)
-    CORS(app, origins=app.config.get("CORS_ORIGINS", "*"))
+    CORS(app, origins=app.config.get("CORS_ORIGINS", [
+        "https://brave-ocean-004361b03.7.azurestaticapps.net",
+        "http://localhost:5173",
+    ]))
 
     from app.routes.chat import chat_bp
     from app.routes.nutrition import nutrition_bp

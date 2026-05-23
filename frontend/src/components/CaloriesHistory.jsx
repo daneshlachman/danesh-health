@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API } from "../utils/api";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, ReferenceLine, Legend,
@@ -165,7 +166,7 @@ export default function CaloriesHistory({ onBack }) {
   const [kpiDays, setKpiDays] = useState(7);
 
   useEffect(() => {
-    fetch("/api/calories/history?days=30")
+    fetch(`${API}/api/calories/history?days=30`)
       .then(r => r.json())
       .then(setData)
       .catch(console.error)

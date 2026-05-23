@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API } from "../utils/api";
 
 const toLocalISO = (d) => {
   const y = d.getFullYear();
@@ -160,7 +161,7 @@ export default function NutritionLog() {
 
   const fetchLogs = (d) => {
     setLoading(true);
-    fetch(`/api/nutrition?date=${d}`)
+    fetch(`${API}/api/nutrition?date=${d}`)
       .then((r) => r.json())
       .then(setLogs)
       .catch(console.error)
@@ -185,7 +186,7 @@ export default function NutritionLog() {
   }, {});
 
   const handleDelete = (id) => {
-    fetch(`/api/nutrition/${id}`, { method: "DELETE" })
+    fetch(`${API}/api/nutrition/${id}`, { method: "DELETE" })
       .then(() => setLogs((prev) => prev.filter((l) => l.id !== id)))
       .catch(console.error);
   };

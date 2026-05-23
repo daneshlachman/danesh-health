@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API } from "../utils/api";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, ReferenceLine, Legend,
@@ -173,7 +174,7 @@ export default function WhoopHistory({ onBack, initialTab = "recovery" }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/whoop/history?days=${days}`)
+    fetch(`${API}/api/whoop/history?days=${days}`)
       .then(r => r.json())
       .then(setData)
       .catch(console.error)

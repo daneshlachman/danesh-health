@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { API } from "../utils/api";
 
 function cleanReply(text) {
   return text
@@ -105,7 +106,7 @@ export default function Chat() {
   const isToday = date === todayISO;
 
   useEffect(() => {
-    fetch(`/api/chat/history?date=${date}`)
+    fetch(`${API}/api/chat/history?date=${date}`)
       .then((r) => r.json())
       .then(setMessages)
       .catch(console.error);
@@ -137,7 +138,7 @@ export default function Chat() {
     setMessages((prev) => [...prev, { role: "user", content: text, id: Date.now() }]);
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch(`${API}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, date }),

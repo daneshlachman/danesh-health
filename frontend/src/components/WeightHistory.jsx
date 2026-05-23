@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API } from "../utils/api";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, ReferenceLine,
@@ -54,7 +55,7 @@ export default function WeightHistory({ onBack }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/weight?days=${days}`)
+    fetch(`${API}/api/weight?days=${days}`)
       .then(r => r.json())
       .then(rows => setData(rows.map(r => ({ date: r.date.slice(5), kg: r.weight_kg }))))
       .catch(console.error)

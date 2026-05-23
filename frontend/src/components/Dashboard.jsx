@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { API } from "../utils/api";
 import { cachedFetch, getCached, setCache } from "../utils/cache";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine,
@@ -217,7 +218,7 @@ export default function Dashboard({ onNavigate }) {
 
   const fetchWeight = (days) => {
     cachedFetch(
-      `/api/weight?days=${days}`,
+      `${API}/api/weight?days=${days}`,
       `weight-${days}`,
       (weights) => setWeightData(parseWeights(weights)),
     );
@@ -241,8 +242,8 @@ export default function Dashboard({ onNavigate }) {
     if (cachedTdee) setTdee(cachedTdee); else setTdee(null);
 
     Promise.all([
-      fetch(`/api/whoop/today?date=${date}`).then((r) => r.json()),
-      fetch(`/api/tdee/today?date=${date}`).then((r) => r.json()),
+      fetch(`${API}/api/whoop/today?date=${date}`).then((r) => r.json()),
+      fetch(`${API}/api/tdee/today?date=${date}`).then((r) => r.json()),
     ]).then(([whoopData, tdeeData]) => {
       if (dateRef.current !== date) return; // navigated away
       setCache(whoopKey, whoopData);
@@ -268,12 +269,12 @@ export default function Dashboard({ onNavigate }) {
     }
 
     cachedFetch(
-      `/api/weight?days=${weightDays}`,
+      `${API}/api/weight?days=${weightDays}`,
       `weight-${weightDays}`,
       (weights) => setWeightData(parseWeights(weights)),
     );
 
-    fetch("/api/whoop/status")
+    fetch(`${API}/api/whoop/status`)
       .then((r) => r.json())
       .then((status) => {
         setCache("whoop-status", status);
@@ -290,13 +291,13 @@ export default function Dashboard({ onNavigate }) {
   const triggerSync = async () => {
     setSyncing(true);
     try {
-      const res = await fetch("/api/sync/whoop", { method: "POST" });
+      const res = await fetch(`${API}/api/sync/whoop`, { method: "POST" });
       const data = await res.json();
       if (data.status === "ok") {
         localStorage.setItem("lastWhoopSync", Date.now().toString());
         const [weights, today] = await Promise.all([
-          fetch(`/api/weight?days=${weightDays}`).then((r) => r.json()),
-          fetch("/api/whoop/today").then((r) => r.json()),
+          fetch(`${API}/api/weight?days=${weightDays}`).then((r) => r.json()),
+          fetch(`${API}/api/whoop/today`).then((r) => r.json()),
         ]);
         setCache(`weight-${weightDays}`, weights);
         setCache(`whoop-today-${todayISO}`, today);
@@ -318,7 +319,7 @@ export default function Dashboard({ onNavigate }) {
   const saveWeight = () => {
     const kg = parseFloat(weightInput.replace(",", "."));
     if (!kg || isNaN(kg)) return;
-    fetch("/api/weight", {
+    fetch(`${API}/api/weight`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ weight_kg: kg }),
@@ -556,7 +557,7 @@ export default function Dashboard({ onNavigate }) {
             </button>
             <button
               onClick={async () => {
-                await fetch("/api/whoop/disconnect", { method: "POST" });
+                await fetch(`${API}/api/whoop/disconnect`, { method: "POST" });
                 setWhoopConnected(false);
               }}
               className="text-xs text-gray-400 hover:text-red-500 px-2 py-1.5 rounded-lg"
@@ -565,7 +566,7 @@ export default function Dashboard({ onNavigate }) {
             </button>
           </>
         ) : (
-          <a href="/api/whoop/authorize" className="text-xs bg-black text-white px-3 py-1.5 rounded-lg font-medium">
+          <a href={`${API}/api/whoop/authorize`} className="text-xs bg-black text-white px-3 py-1.5 rounded-lg font-medium">
             Connect Whoop
           </a>
         )}

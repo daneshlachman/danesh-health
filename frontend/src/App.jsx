@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API } from "./utils/api";
 import Dashboard from "./components/Dashboard";
 import NutritionLog from "./components/NutritionLog";
 import Chat from "./components/Chat";
@@ -16,7 +17,7 @@ export default function App() {
   // Warmup ping — fires immediately so the container starts heating up.
   // Response is intentionally ignored; this just breaks the cold-start silence.
   useEffect(() => {
-    fetch("/health").catch(() => {});
+    fetch(`${API}/health`).catch(() => {});
   }, []);
 
   return (

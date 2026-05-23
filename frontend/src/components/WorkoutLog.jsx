@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { API } from "../utils/api";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 const SOURCE_COLOR = {
@@ -129,7 +130,7 @@ function RouteAndCharts({ workoutId, hasPolyline, isRun }) {
   // Effect 1: fetch data
   useEffect(() => {
     if (!hasPolyline) { setStatus("error"); return; }
-    fetch(`/api/workouts/${workoutId}/route`)
+    fetch(`${API}/api/workouts/${workoutId}/route`)
       .then(r => r.json())
       .then(data => {
         const pts = data.points || [];
@@ -365,7 +366,7 @@ export default function WorkoutLog() {
 
   const fetchWorkouts = () => {
     setLoading(true);
-    fetch("/api/workouts?limit=100")
+    fetch(`${API}/api/workouts?limit=100`)
       .then((r) => r.json())
       .then(setWorkouts)
       .catch(console.error)
@@ -378,8 +379,8 @@ export default function WorkoutLog() {
     setSyncing(true);
     try {
       await Promise.all([
-        fetch("/api/sync/hevy", { method: "POST" }),
-        fetch("/api/sync/garmin", { method: "POST" }),
+        fetch(`${API}/api/sync/hevy`, { method: "POST" }),
+        fetch(`${API}/api/sync/garmin`, { method: "POST" }),
       ]);
       fetchWorkouts();
     } finally {
