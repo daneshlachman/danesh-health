@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API } from "../utils/api";
+import { searchCommon } from "../utils/commonFoods";
 
 const toLocalISO = (d) => {
   const y = d.getFullYear();
@@ -70,11 +71,25 @@ function FoodSearchModal({ meal, date, onClose, onSaved }) {
 
   useEffect(() => {
     if (query.length < 2) { setResults([]); return; }
+
+    // Lokale resultaten direct tonen
+    const local = searchCommon(query);
+    setResults(local);
+
+    // Open Food Facts op de achtergrond
     const timer = setTimeout(() => {
       setSearching(true);
-      fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=15&fields=product_name,brands,nutriments&lc=nl`)
+      fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=15&sort_by=unique_scans_n&fields=product_name,brands,nutriments&lc=nl`)
         .then((r) => r.json())
-        .then((data) => setResults((data.products || []).filter((p) => p.product_name && p.nutriments?.["energy-kcal_100g"])))
+        .then((data) => {
+          const off = (data.products || []).filter(
+            (p) => p.product_name && p.nutriments?.["energy-kcal_100g"]
+          );
+          // Lokale resultaten bovenaan, OFF eronder (zonder dubbelen)
+          const localNames = new Set(local.map((f) => f.product_name));
+          const combined = [...local, ...off.filter((p) => !localNames.has(p.product_name))];
+          setResults(combined);
+        })
         .catch(console.error)
         .finally(() => setSearching(false));
     }, 400);
