@@ -57,7 +57,6 @@ def _search_usda(query, api_key):
 
 
 def _search_off(query):
-    """Open Food Facts — goed voor Europese/Nederlandse verpakte producten."""
     try:
         resp = requests.get(
             OFF_URL,
@@ -104,7 +103,6 @@ def food_search():
     usda = _search_usda(query, api_key)
     seen = {r["name"].lower() for r in usda}
 
-    # Vul aan met OFF voor Europese/branded producten die USDA mist
     if len(usda) < 5:
         for r in _search_off(query):
             if r["name"].lower() not in seen:
