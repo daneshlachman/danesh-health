@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { API } from "../utils/api";
+import { cachedFetch } from "../utils/cache";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 const SOURCE_COLOR = {
@@ -366,11 +367,12 @@ export default function WorkoutLog() {
 
   const fetchWorkouts = () => {
     setLoading(true);
-    fetch(`${API}/api/workouts?limit=100`)
-      .then((r) => r.json())
-      .then(setWorkouts)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    cachedFetch(
+      `${API}/api/workouts?limit=100`,
+      `workouts_list`,
+      (data) => { setWorkouts(data); setLoading(false); },
+      (err) => { console.error(err); setLoading(false); }
+    );
   };
 
   useEffect(() => { fetchWorkouts(); }, []);

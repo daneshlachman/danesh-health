@@ -6,6 +6,7 @@ import anthropic
 
 from app import db
 from app.models import WhoopData, NutritionLog, WeightLog, Workout, ChatMessage
+from app.services.workout_utils import calc_workout_kcal, dedupe_workouts
 
 MODEL = "claude-sonnet-4-6"
 MAX_HISTORY_FOOD = 0
@@ -71,24 +72,7 @@ def calculate_tdee(user_id: str, today: date) -> str:
     tef = bmr * 0.10
 
     todays_workouts = Workout.query.filter_by(user_id=user_id, date=today).all()
-    workout_kcal = 0
-    workout_notes = []
-    for w in todays_workouts:
-        raw = w.raw_json or {}
-        if w.source == "garmin" and raw.get("calories"):
-            cal = raw["calories"]
-            workout_kcal += cal
-            workout_notes.append(f"{w.title} {cal} kcal (Garmin)")
-        elif w.source == "hevy" and w.duration_minutes:
-            cal = round(5 * weight_kg * (w.duration_minutes / 60))
-            workout_kcal += cal
-            workout_notes.append(f"{w.title} ~{cal} kcal (Hevy estimate)")
-        elif w.source == "whoop":
-            kj = (raw.get("score") or {}).get("kilojoule")
-            if kj:
-                cal = round(kj / 4.184)
-                workout_kcal += cal
-                workout_notes.append(f"{w.title} {cal} kcal (Whoop)")
+    workout_kcal, workout_notes = calc_workout_kcal(todays_workouts, weight_kg)
 
     tdee = round(bmr + step_kcal + tef + workout_kcal)
     breakdown = f"BMR {round(bmr)} + steps {round(step_kcal)} + TEF {round(tef)}"
@@ -155,13 +139,14 @@ Today's nutrition so far: {nutrition_str}
 
     # Workout details — only when relevant
     if rich:
-        workouts = (
+        raw_workouts = (
             Workout.query
             .filter_by(user_id=user_id)
             .order_by(Workout.date.desc())
-            .limit(5)
+            .limit(20)
             .all()
         )
+        workouts = dedupe_workouts(raw_workouts)
         workout_lines = []
         for w in workouts:
             raw = w.raw_json or {}

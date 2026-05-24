@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API } from "../utils/api";
+import { cachedFetch, setCache } from "../utils/cache";
 import { searchCommon } from "../utils/commonFoods";
 
 const toLocalISO = (d) => {
@@ -323,11 +324,12 @@ export default function NutritionLog() {
 
   const fetchLogs = (d) => {
     setLoading(true);
-    fetch(`${API}/api/nutrition?date=${d}`)
-      .then((r) => r.json())
-      .then(setLogs)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    cachedFetch(
+      `${API}/api/nutrition?date=${d}`,
+      `nutrition_${d}`,
+      (data) => { setLogs(data); setLoading(false); },
+      (err) => { console.error(err); setLoading(false); }
+    );
   };
 
   useEffect(() => { fetchLogs(date); }, [date]);
@@ -349,12 +351,20 @@ export default function NutritionLog() {
 
   const handleDelete = (id) => {
     fetch(`${API}/api/nutrition/${id}`, { method: "DELETE" })
-      .then(() => setLogs((prev) => prev.filter((l) => l.id !== id)))
+      .then(() => setLogs((prev) => {
+        const updated = prev.filter((l) => l.id !== id);
+        setCache(`nutrition_${date}`, updated);
+        return updated;
+      }))
       .catch(console.error);
   };
 
   const handleSaved = (entry) => {
-    setLogs((prev) => [...prev, entry]);
+    setLogs((prev) => {
+      const updated = [...prev, entry];
+      setCache(`nutrition_${date}`, updated);
+      return updated;
+    });
   };
 
   return (

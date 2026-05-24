@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { API } from "../utils/api";
+import { cachedFetch, setCache } from "../utils/cache";
 
 function cleanReply(text) {
   return text
@@ -106,10 +107,12 @@ export default function Chat() {
   const isToday = date === todayISO;
 
   useEffect(() => {
-    fetch(`${API}/api/chat/history?date=${date}`)
-      .then((r) => r.json())
-      .then(setMessages)
-      .catch(console.error);
+    cachedFetch(
+      `${API}/api/chat/history?date=${date}`,
+      `chat_history_${date}`,
+      setMessages,
+      console.error
+    );
   }, [date]);
 
   const prevDay = () => {
@@ -135,7 +138,11 @@ export default function Chat() {
 
     setInput("");
     setSending(true);
-    setMessages((prev) => [...prev, { role: "user", content: text, id: Date.now() }]);
+    setMessages((prev) => {
+      const updated = [...prev, { role: "user", content: text, id: Date.now() }];
+      setCache(`chat_history_${date}`, updated);
+      return updated;
+    });
 
     try {
       const res = await fetch(`${API}/api/chat`, {
@@ -144,15 +151,19 @@ export default function Chat() {
         body: JSON.stringify({ message: text, date }),
       });
       const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: data.message,
-          nutritionLogged: data.nutrition_logged,
-          id: Date.now() + 1,
-        },
-      ]);
+      setMessages((prev) => {
+        const updated = [
+          ...prev,
+          {
+            role: "assistant",
+            content: data.message,
+            nutritionLogged: data.nutrition_logged,
+            id: Date.now() + 1,
+          },
+        ];
+        setCache(`chat_history_${date}`, updated);
+        return updated;
+      });
     } catch {
       setMessages((prev) => [
         ...prev,

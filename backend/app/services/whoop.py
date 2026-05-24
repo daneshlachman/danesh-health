@@ -151,6 +151,20 @@ def is_connected(user_id: str) -> bool:
     return OAuthToken.query.filter_by(user_id=user_id, provider="whoop").first() is not None
 
 
+def _local_date(dt_utc: datetime, tz_offset_str: str) -> date:
+    """Convert a UTC datetime to a local date using a Whoop timezone_offset string like '+02:00'."""
+    try:
+        sign = 1 if tz_offset_str[0] != "-" else -1
+        parts = tz_offset_str.lstrip("+-").split(":")
+        delta = timedelta(
+            hours=int(parts[0]) * sign,
+            minutes=int(parts[1]) * sign if len(parts) > 1 else 0,
+        )
+        return (dt_utc + delta).date()
+    except (IndexError, ValueError):
+        return dt_utc.date()
+
+
 def sync(user_id: str) -> dict:
     access_token = _get_valid_token(user_id)
     if not access_token:
@@ -168,36 +182,25 @@ def sync(user_id: str) -> dict:
         current_app.logger.error(f"Whoop API error: {e} — {body}")
         return {"status": "error", "message": str(e), "detail": body}
 
-    # Build a date → data map from recovery
+    # Build sleep_id → local_date map first (sleep has timezone_offset, recovery does not)
+    sleep_id_to_date: dict[int, date] = {}
     day_map: dict[date, dict] = {}
-    for r in recovery_records:
-        if r.get("score_state") != "SCORED":
-            continue
-        score = r.get("score", {})
-        try:
-            d = datetime.fromisoformat(r["created_at"].replace("Z", "+00:00")).date()
-        except (KeyError, ValueError):
-            continue
-        day_map.setdefault(d, {})
-        day_map[d].update({
-            "recovery_score": score.get("recovery_score"),
-            "hrv_ms": score.get("hrv_rmssd_milli"),
-            "resting_hr": score.get("resting_heart_rate"),
-            "respiratory_rate": score.get("respiratory_rate"),
-            "raw": r,
-        })
 
-    # Merge sleep into the same date map
     for s in sleep_records:
         if s.get("score_state") != "SCORED" or s.get("nap"):
             continue
         score = s.get("score", {})
         try:
-            d = datetime.fromisoformat(s["end"].replace("Z", "+00:00")).date()
+            end_dt = datetime.fromisoformat(s["end"].replace("Z", "+00:00"))
+            tz_str = s.get("timezone_offset", "+00:00")
+            d = _local_date(end_dt, tz_str)
         except (KeyError, ValueError):
             continue
+
+        if s.get("id"):
+            sleep_id_to_date[s["id"]] = d
+
         start_dt = datetime.fromisoformat(s["start"].replace("Z", "+00:00"))
-        end_dt = datetime.fromisoformat(s["end"].replace("Z", "+00:00"))
         duration_hours = (end_dt - start_dt).total_seconds() / 3600
 
         sleep_needed = score.get("sleep_needed", {})
@@ -214,6 +217,29 @@ def sync(user_id: str) -> dict:
             "sleep_consistency_pct": score.get("sleep_consistency_percentage"),
             "sleep_efficiency_pct": score.get("sleep_efficiency_percentage"),
             "sleep_disturbances": score.get("disturbance_count"),
+        })
+
+    # Merge recovery into the same date — use the associated sleep date when available
+    for r in recovery_records:
+        if r.get("score_state") != "SCORED":
+            continue
+        score = r.get("score", {})
+        # Prefer sleep_id mapping so recovery lands on the same date as sleep
+        sleep_id = r.get("sleep_id")
+        if sleep_id and sleep_id in sleep_id_to_date:
+            d = sleep_id_to_date[sleep_id]
+        else:
+            try:
+                d = datetime.fromisoformat(r["created_at"].replace("Z", "+00:00")).date()
+            except (KeyError, ValueError):
+                continue
+        day_map.setdefault(d, {})
+        day_map[d].update({
+            "recovery_score": score.get("recovery_score"),
+            "hrv_ms": score.get("hrv_rmssd_milli"),
+            "resting_hr": score.get("resting_heart_rate"),
+            "respiratory_rate": score.get("respiratory_rate"),
+            "raw": r,
         })
 
     # Upsert into whoop_data
