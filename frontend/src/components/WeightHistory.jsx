@@ -154,6 +154,14 @@ function PhotoModal({ src, onClose }) {
   const state = useRef({ scale: 1, pos: { x: 0, y: 0 }, lastDist: null, panStart: null });
 
   useEffect(() => {
+    // Disable Safari page-level pinch zoom while modal is open
+    const vp = document.querySelector('meta[name="viewport"]');
+    const origContent = vp?.content || '';
+    if (vp) vp.content = origContent + ', user-scalable=no, maximum-scale=1.0';
+    return () => { if (vp) vp.content = origContent; };
+  }, []);
+
+  useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const onStart = (e) => {
