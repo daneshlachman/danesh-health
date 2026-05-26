@@ -155,32 +155,97 @@ function PhotoModal({ src, onClose }) {
   );
 }
 
-function CompareModal({ a, b, onClose }) {
+function CompareScreen({ allPhotos, initialA, initialB, onClose }) {
+  const [left, setLeft] = useState(initialA);
+  const [right, setRight] = useState(initialB);
+  const [activeSide, setActiveSide] = useState("right");
+
   const fmtDate = (iso) => {
-    const [, m, d] = iso.split("-").map(Number);
-    return `${d} ${MONTH_NAMES[m - 1]}`;
+    const d = new Date(iso + "T12:00:00");
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   };
+
+  const pickThumb = (p) => {
+    if (activeSide === "left") setLeft(p);
+    else setRight(p);
+  };
+
+  const diff = right && left ? (right.weight_kg - left.weight_kg).toFixed(1) : null;
+  const diffColor = diff < 0 ? "#22c55e" : diff > 0 ? "#ef4444" : "#9ca3af";
+
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col" onClick={onClose}>
-      <div className="flex flex-1 min-h-0">
-        <div className="flex-1 flex flex-col min-w-0">
-          <img src={a.photo_data} alt="" className="flex-1 object-cover w-full min-h-0" />
-          <div className="bg-black/60 text-white text-center py-2 shrink-0">
-            <p className="text-sm font-bold">{a.weight_kg} kg</p>
-            <p className="text-xs text-gray-300">{fmtDate(a.date)}</p>
-          </div>
+    <div className="fixed inset-0 z-50 bg-white flex flex-col" style={{ touchAction: "none" }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pt-12 pb-3 shrink-0">
+        <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 text-lg">←</button>
+        <span className="text-sm font-semibold text-gray-800">Progress</span>
+        <div className="w-9" />
+      </div>
+
+      {/* Photos */}
+      <div className="flex mx-4 rounded-2xl overflow-hidden shadow-sm shrink-0" style={{ height: "52vh" }}>
+        <button className={`flex-1 overflow-hidden relative ${activeSide === "left" ? "ring-2 ring-brand-500 ring-inset" : ""}`}
+          onClick={() => setActiveSide("left")}>
+          <img src={left.photo_data} alt="" className="w-full h-full object-cover" />
+          {activeSide === "left" && (
+            <div className="absolute top-2 left-2 bg-brand-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">BEFORE</div>
+          )}
+        </button>
+        <div className="w-0.5 bg-white shrink-0" />
+        <button className={`flex-1 overflow-hidden relative ${activeSide === "right" ? "ring-2 ring-brand-500 ring-inset" : ""}`}
+          onClick={() => setActiveSide("right")}>
+          <img src={right.photo_data} alt="" className="w-full h-full object-cover" />
+          {activeSide === "right" && (
+            <div className="absolute top-2 right-2 bg-brand-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">AFTER</div>
+          )}
+        </button>
+      </div>
+
+      {/* Labels */}
+      <div className="flex px-4 pt-4 pb-2 shrink-0">
+        <div className="flex-1 text-center">
+          <p className="text-xl font-bold text-gray-900">{left.weight_kg} kg</p>
+          <p className="text-xs text-gray-400 mt-0.5">{fmtDate(left.date)}</p>
         </div>
-        <div className="w-px bg-white/20 shrink-0" />
-        <div className="flex-1 flex flex-col min-w-0">
-          <img src={b.photo_data} alt="" className="flex-1 object-cover w-full min-h-0" />
-          <div className="bg-black/60 text-white text-center py-2 shrink-0">
-            <p className="text-sm font-bold">{b.weight_kg} kg</p>
-            <p className="text-xs text-gray-300">{fmtDate(b.date)}</p>
+        {diff !== null && (
+          <div className="flex flex-col items-center justify-center px-3">
+            <p className="text-base font-bold" style={{ color: diffColor }}>
+              {diff > 0 ? "+" : ""}{diff} kg
+            </p>
           </div>
+        )}
+        <div className="flex-1 text-center">
+          <p className="text-xl font-bold text-gray-900">{right.weight_kg} kg</p>
+          <p className="text-xs text-gray-400 mt-0.5">{fmtDate(right.date)}</p>
         </div>
       </div>
-      <div className="bg-black py-3 text-center shrink-0">
-        <p className="text-xs text-gray-400">Tap to close</p>
+
+      <p className="text-center text-[11px] text-gray-400 pb-2 shrink-0">
+        Tap a photo to select side, then pick from strip below
+      </p>
+
+      {/* Thumbnail strip */}
+      <div className="mt-auto border-t border-gray-100 bg-gray-50 shrink-0">
+        <div className="flex gap-2 px-3 py-3 overflow-x-auto">
+          {allPhotos.map(p => {
+            const isLeft = left?.id === p.id;
+            const isRight = right?.id === p.id;
+            return (
+              <button key={p.id} onClick={() => pickThumb(p)}
+                className={`shrink-0 relative rounded-xl overflow-hidden border-2 transition-all
+                  ${isLeft ? "border-brand-500" : isRight ? "border-brand-500" : "border-transparent"}`}
+                style={{ width: 64, height: 64 }}>
+                <img src={p.photo_data} alt="" className="w-full h-full object-cover" />
+                {(isLeft || isRight) && (
+                  <div className="absolute inset-0 bg-brand-500/20" />
+                )}
+                <div className="absolute bottom-0 inset-x-0 bg-black/40 py-0.5 text-center">
+                  <p className="text-white text-[9px] font-bold leading-none">{p.weight_kg}kg</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -192,6 +257,7 @@ export default function WeightHistory({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [modalEntry, setModalEntry] = useState(undefined); // undefined=closed, null=new, obj=edit
   const [photoSrc, setPhotoSrc] = useState(null);
+  const [compareOpen, setCompareOpen] = useState(false);
   const [compareA, setCompareA] = useState(null);
   const [compareB, setCompareB] = useState(null);
 
@@ -309,6 +375,51 @@ export default function WeightHistory({ onBack }) {
         })()}
       </div>
 
+      {/* Photo gallery */}
+      {(() => {
+        const photos = [...rows].reverse().filter(r => r.photo_data);
+        if (photos.length === 0) return null;
+        const handlePhotoTap = (r) => {
+          if (!compareA) { setCompareA(r); return; }
+          if (compareA.id === r.id) { setCompareA(null); return; }
+          setCompareB(r);
+          setCompareOpen(true);
+        };
+        return (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                {compareA ? "Tap a second photo to compare" : "Photos · tap 2 to compare"}
+              </span>
+              {compareA && (
+                <button onClick={() => setCompareA(null)} className="text-xs text-gray-400">Cancel</button>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-px bg-gray-100">
+              {photos.map(r => {
+                const isA = compareA?.id === r.id;
+                return (
+                  <button key={r.id} onClick={() => handlePhotoTap(r)}
+                    className="relative bg-white overflow-hidden block w-full"
+                    style={{ paddingBottom: "100%", height: 0 }}
+                  >
+                    <img src={r.photo_data} alt=""
+                      className="absolute inset-0 w-full h-full object-cover" />
+                    {isA && <div className="absolute inset-0 bg-brand-500/25 ring-2 ring-brand-500 ring-inset" />}
+                    <div className="absolute bottom-0 inset-x-0 bg-black/50 py-1 px-1.5">
+                      <p className="text-white text-[10px] font-bold leading-none">{r.weight_kg} kg</p>
+                      <p className="text-white/70 text-[9px] leading-none mt-0.5">
+                        {(() => { const [,m,d] = r.date.split("-").map(Number); return `${d} ${MONTH_NAMES[m-1]}`; })()}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Log list */}
       {rows.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -342,52 +453,16 @@ export default function WeightHistory({ onBack }) {
         </div>
       )}
 
-      {/* Photo gallery + compare */}
-      {(() => {
-        const photos = [...rows].reverse().filter(r => r.photo_data);
-        if (photos.length === 0) return null;
-        const handlePhotoTap = (r) => {
-          if (!compareA) { setCompareA(r); return; }
-          if (compareA.id === r.id) { setCompareA(null); return; }
-          setCompareB(r);
-        };
-        return (
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                {compareA ? "Tap a second photo to compare" : "Photos · tap 2 to compare"}
-              </span>
-              {compareA && (
-                <button onClick={() => setCompareA(null)} className="text-xs text-gray-400">Cancel</button>
-              )}
-            </div>
-            <div className="grid grid-cols-3 gap-px bg-gray-100">
-              {photos.map(r => {
-                const isA = compareA?.id === r.id;
-                return (
-                  <button key={r.id} onClick={() => handlePhotoTap(r)}
-                    className="relative bg-white overflow-hidden"
-                    style={{ aspectRatio: "1" }}
-                  >
-                    <img src={r.photo_data} alt="" className="w-full h-full object-cover" />
-                    {isA && <div className="absolute inset-0 bg-brand-500/25 ring-2 ring-brand-500 ring-inset" />}
-                    <div className="absolute bottom-0 inset-x-0 bg-black/50 py-1 px-1.5">
-                      <p className="text-white text-[10px] font-bold leading-none">{r.weight_kg} kg</p>
-                      <p className="text-white/70 text-[9px] leading-none mt-0.5">
-                        {(() => { const [,m,d] = r.date.split("-").map(Number); return `${d} ${MONTH_NAMES[m-1]}`; })()}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-
       {modalEntry !== undefined && <WeightModal entry={modalEntry} onClose={() => setModalEntry(undefined)} onSaved={handleSaved} />}
       {photoSrc && <PhotoModal src={photoSrc} onClose={() => setPhotoSrc(null)} />}
-      {compareA && compareB && <CompareModal a={compareA} b={compareB} onClose={() => { setCompareA(null); setCompareB(null); }} />}
+      {compareOpen && compareA && compareB && (
+        <CompareScreen
+          allPhotos={[...rows].reverse().filter(r => r.photo_data)}
+          initialA={compareA}
+          initialB={compareB}
+          onClose={() => { setCompareOpen(false); setCompareA(null); setCompareB(null); }}
+        />
+      )}
     </div>
   );
 }
