@@ -242,33 +242,31 @@ function CompareScreen({ allPhotos, initialA, initialB, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col" style={{ touchAction: "none" }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-12 pb-3 shrink-0">
+      <div className="flex items-center justify-between px-4 pt-12 pb-2 shrink-0">
         <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 text-lg">←</button>
         <span className="text-sm font-semibold text-gray-800">Progress</span>
         <div className="w-9" />
       </div>
 
       {/* Photos */}
-      <div className="flex mx-4 rounded-2xl overflow-hidden shadow-sm shrink-0" style={{ height: "52vh" }}>
-        <button className={`flex-1 overflow-hidden relative ${activeSide === "left" ? "ring-2 ring-brand-500 ring-inset" : ""}`}
+      <div className="flex flex-1 overflow-hidden">
+        <button className="flex-1 overflow-hidden relative bg-gray-50"
           onClick={() => setActiveSide("left")}>
           <img src={left.photo_data} alt="" className="w-full h-full object-contain" />
-          {activeSide === "left" && (
-            <div className="absolute top-2 left-2 bg-brand-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">BEFORE</div>
-          )}
+          <div className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${activeSide === "left" ? "bg-brand-500 text-white" : "bg-black/30 text-white"}`}>BEFORE</div>
+          {activeSide === "left" && <div className="absolute inset-0 ring-2 ring-brand-500 ring-inset pointer-events-none" />}
         </button>
-        <div className="w-0.5 bg-white shrink-0" />
-        <button className={`flex-1 overflow-hidden relative ${activeSide === "right" ? "ring-2 ring-brand-500 ring-inset" : ""}`}
+        <div className="w-px bg-gray-200 shrink-0" />
+        <button className="flex-1 overflow-hidden relative bg-gray-50"
           onClick={() => setActiveSide("right")}>
           <img src={right.photo_data} alt="" className="w-full h-full object-contain" />
-          {activeSide === "right" && (
-            <div className="absolute top-2 right-2 bg-brand-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">AFTER</div>
-          )}
+          <div className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${activeSide === "right" ? "bg-brand-500 text-white" : "bg-black/30 text-white"}`}>AFTER</div>
+          {activeSide === "right" && <div className="absolute inset-0 ring-2 ring-brand-500 ring-inset pointer-events-none" />}
         </button>
       </div>
 
       {/* Labels */}
-      <div className="flex px-4 pt-4 pb-2 shrink-0">
+      <div className="flex px-4 pt-3 pb-1 shrink-0">
         <div className="flex-1 text-center">
           <p className="text-xl font-bold text-gray-900">{left.weight_kg} kg</p>
           <p className="text-xs text-gray-400 mt-0.5">{fmtDate(left.date)}</p>
@@ -286,26 +284,20 @@ function CompareScreen({ allPhotos, initialA, initialB, onClose }) {
         </div>
       </div>
 
-      <p className="text-center text-[11px] text-gray-400 pb-2 shrink-0">
-        Tap a photo to select side, then pick from strip below
-      </p>
-
       {/* Thumbnail strip */}
-      <div className="mt-auto border-t border-gray-100 bg-gray-50 shrink-0">
+      <div className="border-t border-gray-100 bg-gray-50 shrink-0">
         <div className="flex gap-2 px-3 py-3 overflow-x-auto">
           {allPhotos.map(p => {
             const isLeft = left?.id === p.id;
             const isRight = right?.id === p.id;
+            const active = isLeft || isRight;
             return (
               <button key={p.id} onClick={() => pickThumb(p)}
-                className={`shrink-0 relative rounded-xl overflow-hidden border-2 transition-all
-                  ${isLeft ? "border-brand-500" : isRight ? "border-brand-500" : "border-transparent"}`}
-                style={{ width: 64, height: 64 }}>
-                <img src={p.photo_data} alt="" className="w-full h-full object-contain" />
-                {(isLeft || isRight) && (
-                  <div className="absolute inset-0 bg-brand-500/20" />
-                )}
-                <div className="absolute bottom-0 inset-x-0 bg-black/40 py-0.5 text-center">
+                className="shrink-0 relative rounded-lg overflow-hidden transition-all"
+                style={{ width: 64, height: 64, opacity: active ? 1 : 0.6 }}>
+                <img src={p.photo_data} alt="" className="w-full h-full object-cover" />
+                {active && <div className="absolute inset-0 ring-2 ring-brand-500 ring-inset rounded-lg" />}
+                <div className="absolute bottom-0 inset-x-0 bg-black/50 py-0.5 text-center">
                   <p className="text-white text-[9px] font-bold leading-none">{p.weight_kg}kg</p>
                 </div>
               </button>
