@@ -154,12 +154,45 @@ function PhotoModal({ src, onClose }) {
   );
 }
 
+function CompareModal({ a, b, onClose }) {
+  const fmtDate = (iso) => {
+    const [, m, d] = iso.split("-").map(Number);
+    return `${d} ${MONTH_NAMES[m - 1]}`;
+  };
+  return (
+    <div className="fixed inset-0 z-50 bg-black flex flex-col" onClick={onClose}>
+      <div className="flex flex-1 min-h-0">
+        <div className="flex-1 flex flex-col min-w-0">
+          <img src={a.photo_data} alt="" className="flex-1 object-cover w-full min-h-0" />
+          <div className="bg-black/60 text-white text-center py-2 shrink-0">
+            <p className="text-sm font-bold">{a.weight_kg} kg</p>
+            <p className="text-xs text-gray-300">{fmtDate(a.date)}</p>
+          </div>
+        </div>
+        <div className="w-px bg-white/20 shrink-0" />
+        <div className="flex-1 flex flex-col min-w-0">
+          <img src={b.photo_data} alt="" className="flex-1 object-cover w-full min-h-0" />
+          <div className="bg-black/60 text-white text-center py-2 shrink-0">
+            <p className="text-sm font-bold">{b.weight_kg} kg</p>
+            <p className="text-xs text-gray-300">{fmtDate(b.date)}</p>
+          </div>
+        </div>
+      </div>
+      <div className="bg-black py-3 text-center shrink-0">
+        <p className="text-xs text-gray-400">Tap to close</p>
+      </div>
+    </div>
+  );
+}
+
 export default function WeightHistory({ onBack }) {
   const [days, setDays] = useState(7);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalEntry, setModalEntry] = useState(undefined); // undefined=closed, null=new, obj=edit
   const [photoSrc, setPhotoSrc] = useState(null);
+  const [compareA, setCompareA] = useState(null);
+  const [compareB, setCompareB] = useState(null);
 
   const fetchData = () => {
     setLoading(true);
@@ -271,6 +304,56 @@ export default function WeightHistory({ onBack }) {
         })()}
       </div>
 
+      {/* Photo gallery */}
+      {rows.some(r => r.photo_data) && (() => {
+        const photos = [...rows].reverse().filter(r => r.photo_data);
+        const handlePhotoTap = (r) => {
+          if (!compareA) {
+            setCompareA(r);
+          } else if (compareA.id === r.id) {
+            setCompareA(null);
+          } else {
+            setCompareB(r);
+          }
+        };
+        return (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Photos</span>
+              {compareA && (
+                <span className="text-xs text-brand-500 font-medium">
+                  {compareA ? "Tap a second photo to compare" : ""}
+                </span>
+              )}
+              {compareA && (
+                <button onClick={() => setCompareA(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-0.5 p-0.5">
+              {photos.map(r => {
+                const isA = compareA?.id === r.id;
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => handlePhotoTap(r)}
+                    className="relative aspect-square overflow-hidden"
+                  >
+                    <img src={r.photo_data} alt="" className="w-full h-full object-cover" />
+                    <div className={`absolute inset-0 transition-colors ${isA ? "bg-brand-500/30 ring-2 ring-brand-500 ring-inset" : "bg-transparent"}`} />
+                    <div className="absolute bottom-0 inset-x-0 bg-black/40 py-1 px-1.5">
+                      <p className="text-white text-[10px] font-semibold leading-none">{r.weight_kg} kg</p>
+                      <p className="text-white/70 text-[9px] leading-none mt-0.5">
+                        {(() => { const [,m,d] = r.date.split("-").map(Number); return `${d} ${MONTH_NAMES[m-1]}`; })()}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Log list */}
       {rows.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -306,6 +389,7 @@ export default function WeightHistory({ onBack }) {
 
       {modalEntry !== undefined && <WeightModal entry={modalEntry} onClose={() => setModalEntry(undefined)} onSaved={handleSaved} />}
       {photoSrc && <PhotoModal src={photoSrc} onClose={() => setPhotoSrc(null)} />}
+      {compareA && compareB && <CompareModal a={compareA} b={compareB} onClose={() => { setCompareA(null); setCompareB(null); }} />}
     </div>
   );
 }
