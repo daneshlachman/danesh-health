@@ -149,8 +149,15 @@ function WeightModal({ entry, onClose, onSaved }) {
 
 function PhotoModal({ src, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
-      <img src={src} alt="weight" className="max-w-full max-h-full rounded-xl" />
+    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+      <div className="absolute top-4 right-4 z-10">
+        <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/20 text-white text-xl">×</button>
+      </div>
+      <div className="w-full h-full overflow-auto flex items-center justify-center"
+           style={{ touchAction: "pan-x pan-y pinch-zoom" }}>
+        <img src={src} alt="" className="rounded-xl"
+             style={{ maxWidth: "100%", maxHeight: "100vh", touchAction: "pan-x pan-y pinch-zoom" }} />
+      </div>
     </div>
   );
 }
