@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { API } from "../utils/api";
+import { invalidateCachePrefix } from "../utils/cache";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, ReferenceLine,
@@ -209,13 +210,17 @@ export default function WeightHistory({ onBack }) {
 
   const handleDelete = (id) => {
     fetch(`${API}/api/weight/${id}`, { method: "DELETE" })
-      .then(() => setRows(prev => prev.filter(r => r.id !== id)))
+      .then(() => {
+        setRows(prev => prev.filter(r => r.id !== id));
+        invalidateCachePrefix("weight-");
+      })
       .catch(console.error);
   };
 
   const handleSaved = (result, isNew) => {
     if (isNew) setRows(prev => [...prev, result]);
     else setRows(prev => prev.map(r => r.id === result.id ? result : r));
+    invalidateCachePrefix("weight-");
   };
 
   const kgs = data.map(d => d.kg).filter(v => v != null);

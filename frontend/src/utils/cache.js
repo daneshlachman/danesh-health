@@ -20,6 +20,19 @@ export function setCache(key, data) {
   }
 }
 
+export function invalidateCachePrefix(prefix) {
+  try {
+    const toDelete = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(`cache:${prefix}`)) toDelete.push(k);
+    }
+    toDelete.forEach(k => localStorage.removeItem(k));
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Fetch with stale-while-revalidate.
  * - Calls onData(cached) immediately if cache exists.
