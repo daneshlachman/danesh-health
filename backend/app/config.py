@@ -11,9 +11,6 @@ class BaseConfig:
         "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/healthdb"
     )
 
-    # API authentication
-    BACKEND_API_KEY = os.environ.get("BACKEND_API_KEY", "")
-
     # Claude
     ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 

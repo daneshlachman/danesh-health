@@ -48,14 +48,6 @@ def create_app(config_name=None):
         except Exception:
             db.session.rollback()
 
-    @app.before_request
-    def check_api_key():
-        from flask import request
-        if request.path.startswith("/api/") and request.path != "/api/whoop/callback":
-            expected = app.config.get("BACKEND_API_KEY", "")
-            if expected and request.headers.get("X-API-Key") != expected:
-                return {"error": "Unauthorized"}, 401
-
     @app.route("/health")
     def health():
         return {"status": "ok"}, 200
