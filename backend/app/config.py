@@ -14,6 +14,9 @@ class BaseConfig:
     # Claude
     ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
+    # Frontend URL (used for OAuth redirects)
+    FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
     # Whoop
     WHOOP_CLIENT_ID = os.environ.get("WHOOP_CLIENT_ID", "")
     WHOOP_CLIENT_SECRET = os.environ.get("WHOOP_CLIENT_SECRET", "")

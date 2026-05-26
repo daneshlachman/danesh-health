@@ -5,7 +5,10 @@ from app.services import whoop
 
 whoop_bp = Blueprint("whoop", __name__)
 
-FRONTEND_URL = "http://localhost:5173"
+
+def _frontend_url():
+    from flask import current_app
+    return current_app.config.get("FRONTEND_URL", "http://localhost:5173")
 
 
 @whoop_bp.route("/whoop/authorize")
@@ -24,16 +27,16 @@ def callback():
     error = request.args.get("error")
 
     if error or not code:
-        return redirect(f"{FRONTEND_URL}?whoop_error=1")
+        return redirect(f"{_frontend_url()}?whoop_error=1")
 
     user = _ensure_user()
     try:
         whoop.exchange_code(code, user.id)
     except Exception as e:
         current_app.logger.error(f"Whoop token exchange failed: {e}")
-        return redirect(f"{FRONTEND_URL}?whoop_error=1")
+        return redirect(f"{_frontend_url()}?whoop_error=1")
 
-    return redirect(f"{FRONTEND_URL}?whoop_connected=1")
+    return redirect(f"{_frontend_url()}?whoop_connected=1")
 
 
 @whoop_bp.route("/whoop/status")
