@@ -112,14 +112,14 @@ function WeightModal({ entry, onClose, onSaved }) {
             <label className="text-xs text-gray-400 mb-1 block">Weight (kg)</label>
             <input
               autoFocus type="number" step="0.1" value={kg} onChange={e => setKg(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
           <div className="flex-1">
             <label className="text-xs text-gray-400 mb-1 block">Date</label>
             <input
               type="date" value={date} onChange={e => setDate(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
         </div>
@@ -136,7 +136,7 @@ function WeightModal({ entry, onClose, onSaved }) {
               + Add photo
             </button>
           )}
-          <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={pickPhoto} />
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
         </div>
 
         <button onClick={save} disabled={saving || !kg} className="w-full bg-brand-500 text-white rounded-xl py-2.5 text-sm font-medium disabled:opacity-40">
