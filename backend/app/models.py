@@ -32,6 +32,7 @@ class WeightLog(db.Model):
     date = db.Column(db.Date, nullable=False)
     weight_kg = db.Column(db.Float, nullable=False)
     source = db.Column(db.String(50))  # 'whoop', 'manual', 'import'
+    photo_data = db.Column(db.Text)    # base64 encoded image
     created_at = db.Column(db.DateTime(timezone=True), default=_now)
 
     def to_dict(self):
@@ -40,6 +41,7 @@ class WeightLog(db.Model):
             "date": self.date.isoformat(),
             "weight_kg": self.weight_kg,
             "source": self.source,
+            "photo_data": self.photo_data,
             "created_at": self.created_at.isoformat(),
         }
 

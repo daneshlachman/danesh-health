@@ -39,6 +39,15 @@ def create_app(config_name=None):
     app.register_blueprint(whoop_bp, url_prefix="/api")
     app.register_blueprint(profile_bp, url_prefix="/api")
 
+    with app.app_context():
+        try:
+            db.session.execute(db.text(
+                "ALTER TABLE weight_logs ADD COLUMN IF NOT EXISTS photo_data TEXT"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
     @app.route("/health")
     def health():
         return {"status": "ok"}, 200
