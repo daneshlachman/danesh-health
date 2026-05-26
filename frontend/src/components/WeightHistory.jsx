@@ -65,31 +65,35 @@ function compressImage(file, maxPx = 900, quality = 0.75) {
   });
 }
 
-function EditModal({ entry, onClose, onSaved }) {
-  const [kg, setKg] = useState(String(entry.weight_kg));
-  const [date, setDate] = useState(entry.date);
-  const [photo, setPhoto] = useState(entry.photo_data || null);
+const todayISO = new Date().toISOString().slice(0, 10);
+
+function WeightModal({ entry, onClose, onSaved }) {
+  const isNew = !entry;
+  const [kg, setKg] = useState(entry ? String(entry.weight_kg) : "");
+  const [date, setDate] = useState(entry ? entry.date : todayISO);
+  const [photo, setPhoto] = useState(entry?.photo_data || null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef();
 
   const pickPhoto = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const compressed = await compressImage(file);
-    setPhoto(compressed);
+    setPhoto(await compressImage(file));
   };
 
   const save = () => {
     const w = parseFloat(kg);
     if (!w) return;
     setSaving(true);
-    fetch(`${API}/api/weight/${entry.id}`, {
-      method: "PUT",
+    const url = isNew ? `${API}/api/weight` : `${API}/api/weight/${entry.id}`;
+    const method = isNew ? "POST" : "PUT";
+    fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ weight_kg: w, date, photo_data: photo }),
     })
       .then(r => r.json())
-      .then(updated => { onSaved(updated); onClose(); })
+      .then(result => { onSaved(result, isNew); onClose(); })
       .catch(console.error)
       .finally(() => setSaving(false));
   };
@@ -98,7 +102,7 @@ function EditModal({ entry, onClose, onSaved }) {
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/20" onClick={onClose}>
       <div className="bg-white rounded-t-2xl w-full max-w-lg shadow-xl p-5 pb-10 space-y-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700">Edit entry</h2>
+          <h2 className="text-sm font-semibold text-gray-700">{isNew ? "Add entry" : "Edit entry"}</h2>
           <button onClick={onClose} className="text-gray-400 text-2xl leading-none">×</button>
         </div>
 
@@ -106,7 +110,7 @@ function EditModal({ entry, onClose, onSaved }) {
           <div className="flex-1">
             <label className="text-xs text-gray-400 mb-1 block">Weight (kg)</label>
             <input
-              type="number" step="0.1" value={kg} onChange={e => setKg(e.target.value)}
+              autoFocus type="number" step="0.1" value={kg} onChange={e => setKg(e.target.value)}
               className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
@@ -119,32 +123,22 @@ function EditModal({ entry, onClose, onSaved }) {
           </div>
         </div>
 
-        {/* Photo */}
         <div>
           <label className="text-xs text-gray-400 mb-2 block">Photo (optional)</label>
           {photo ? (
             <div className="relative w-full rounded-xl overflow-hidden" style={{ maxHeight: 200 }}>
               <img src={photo} alt="weight" className="w-full object-cover rounded-xl" style={{ maxHeight: 200 }} />
-              <button
-                onClick={() => setPhoto(null)}
-                className="absolute top-2 right-2 w-7 h-7 bg-white/80 rounded-full flex items-center justify-center text-gray-600 text-sm"
-              >×</button>
+              <button onClick={() => setPhoto(null)} className="absolute top-2 right-2 w-7 h-7 bg-white/80 rounded-full flex items-center justify-center text-gray-600 text-sm">×</button>
             </div>
           ) : (
-            <button
-              onClick={() => fileRef.current.click()}
-              className="w-full border-2 border-dashed border-gray-200 rounded-xl py-6 text-sm text-gray-400 hover:border-brand-400 hover:text-brand-500 transition-colors"
-            >
+            <button onClick={() => fileRef.current.click()} className="w-full border-2 border-dashed border-gray-200 rounded-xl py-6 text-sm text-gray-400 hover:border-brand-400 hover:text-brand-500 transition-colors">
               + Add photo
             </button>
           )}
           <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={pickPhoto} />
         </div>
 
-        <button
-          onClick={save} disabled={saving || !kg}
-          className="w-full bg-brand-500 text-white rounded-xl py-2.5 text-sm font-medium disabled:opacity-40"
-        >
+        <button onClick={save} disabled={saving || !kg} className="w-full bg-brand-500 text-white rounded-xl py-2.5 text-sm font-medium disabled:opacity-40">
           {saving ? "Saving…" : "Save"}
         </button>
       </div>
@@ -164,7 +158,7 @@ export default function WeightHistory({ onBack }) {
   const [days, setDays] = useState(7);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(null);
+  const [modalEntry, setModalEntry] = useState(undefined); // undefined=closed, null=new, obj=edit
   const [photoSrc, setPhotoSrc] = useState(null);
 
   const fetchData = () => {
@@ -186,8 +180,9 @@ export default function WeightHistory({ onBack }) {
       .catch(console.error);
   };
 
-  const handleSaved = (updated) => {
-    setRows(prev => prev.map(r => r.id === updated.id ? updated : r));
+  const handleSaved = (result, isNew) => {
+    if (isNew) setRows(prev => [...prev, result]);
+    else setRows(prev => prev.map(r => r.id === result.id ? result : r));
   };
 
   const kgs = data.map(d => d.kg).filter(v => v != null);
@@ -279,8 +274,9 @@ export default function WeightHistory({ onBack }) {
       {/* Log list */}
       {rows.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Entries</span>
+            <button onClick={() => setModalEntry(null)} className="w-6 h-6 flex items-center justify-center rounded-full bg-brand-500 text-white text-base leading-none hover:bg-brand-600 transition-colors">+</button>
           </div>
           <ul className="divide-y divide-gray-50">
             {[...rows].reverse().map(r => {
@@ -299,7 +295,7 @@ export default function WeightHistory({ onBack }) {
                     <p className="text-sm font-semibold text-gray-900">{r.weight_kg} kg</p>
                     <p className="text-xs text-gray-400">{label} · {r.source || "manual"}</p>
                   </div>
-                  <button onClick={() => setEditing(r)} className="text-gray-300 hover:text-brand-500 text-sm px-1">✎</button>
+                  <button onClick={() => setModalEntry(r)} className="text-gray-300 hover:text-brand-500 text-sm px-1">✎</button>
                   <button onClick={() => handleDelete(r.id)} className="text-gray-300 hover:text-red-400 text-lg leading-none px-1">×</button>
                 </li>
               );
@@ -308,7 +304,7 @@ export default function WeightHistory({ onBack }) {
         </div>
       )}
 
-      {editing && <EditModal entry={editing} onClose={() => setEditing(null)} onSaved={handleSaved} />}
+      {modalEntry !== undefined && <WeightModal entry={modalEntry} onClose={() => setModalEntry(undefined)} onSaved={handleSaved} />}
       {photoSrc && <PhotoModal src={photoSrc} onClose={() => setPhotoSrc(null)} />}
     </div>
   );
