@@ -147,84 +147,34 @@ function WeightModal({ entry, onClose, onSaved }) {
   );
 }
 
+function ZoomButtons({ scale, setScale }) {
+  return (
+    <div className="flex gap-3">
+      <button onClick={() => setScale(s => Math.max(1, +(s - 0.5).toFixed(1)))}
+        className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center text-xl font-bold leading-none">−</button>
+      <button onClick={() => setScale(s => Math.min(4, +(s + 0.5).toFixed(1)))}
+        className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center text-xl font-bold leading-none">+</button>
+    </div>
+  );
+}
+
 function PhotoModal({ src, onClose }) {
   const [scale, setScale] = useState(1);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const containerRef = useRef();
-  const state = useRef({ scale: 1, pos: { x: 0, y: 0 }, lastDist: null, panStart: null });
-
-  useEffect(() => {
-    // Disable Safari page-level pinch zoom while modal is open
-    const vp = document.querySelector('meta[name="viewport"]');
-    const origContent = vp?.content || '';
-    if (vp) vp.content = origContent + ', user-scalable=no, maximum-scale=1.0';
-    return () => { if (vp) vp.content = origContent; };
-  }, []);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onStart = (e) => {
-      const s = state.current;
-      if (e.touches.length === 2) {
-        s.lastDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-      } else if (e.touches.length === 1 && s.scale > 1) {
-        s.panStart = { x: e.touches[0].clientX - s.pos.x, y: e.touches[0].clientY - s.pos.y };
-      }
-    };
-    const onMove = (e) => {
-      e.preventDefault();
-      const s = state.current;
-      if (e.touches.length === 2) {
-        const dist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        if (s.lastDist) {
-          s.scale = Math.min(5, Math.max(1, s.scale * (dist / s.lastDist)));
-          setScale(s.scale);
-        }
-        s.lastDist = dist;
-      } else if (e.touches.length === 1 && s.scale > 1 && s.panStart) {
-        s.pos = { x: e.touches[0].clientX - s.panStart.x, y: e.touches[0].clientY - s.panStart.y };
-        setPos({ ...s.pos });
-      }
-    };
-    const onEnd = () => {
-      const s = state.current;
-      s.lastDist = null;
-      s.panStart = null;
-      if (s.scale <= 1.05) {
-        s.scale = 1; s.pos = { x: 0, y: 0 };
-        setScale(1); setPos({ x: 0, y: 0 });
-      }
-    };
-    el.addEventListener("touchstart", onStart, { passive: true });
-    el.addEventListener("touchmove", onMove, { passive: false });
-    el.addEventListener("touchend", onEnd, { passive: true });
-    return () => {
-      el.removeEventListener("touchstart", onStart);
-      el.removeEventListener("touchmove", onMove);
-      el.removeEventListener("touchend", onEnd);
-    };
-  }, []);
 
   return (
-    <div ref={containerRef} className="fixed inset-0 z-50 bg-black flex items-center justify-center"
-         style={{ touchAction: "none" }}>
-      <button onClick={onClose} className="absolute top-4 right-4 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/20 text-white text-xl">×</button>
-      <img src={src} alt=""
-        style={{
-          maxWidth: "100%", maxHeight: "100vh",
-          objectFit: "contain",
-          transform: `scale(${scale}) translate(${pos.x / scale}px, ${pos.y / scale}px)`,
-          transformOrigin: "center center",
-          transition: scale === 1 ? "transform 0.2s ease" : "none",
-          userSelect: "none", WebkitUserSelect: "none",
-        }} />
+    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+      <div className="flex items-center justify-between px-4 pt-12 pb-3 shrink-0">
+        <ZoomButtons scale={scale} setScale={setScale} />
+        <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/20 text-white text-xl">×</button>
+      </div>
+      <div className="flex-1 flex items-center justify-center overflow-hidden">
+        <img src={src} alt=""
+          style={{
+            maxWidth: "100%", maxHeight: "100%", objectFit: "contain",
+            transform: `scale(${scale})`, transformOrigin: "center center",
+            transition: "transform 0.2s ease",
+          }} />
+      </div>
     </div>
   );
 }
@@ -233,6 +183,8 @@ function CompareScreen({ allPhotos, initialA, initialB, onClose }) {
   const [left, setLeft] = useState(initialA);
   const [right, setRight] = useState(initialB);
   const [activeSide, setActiveSide] = useState("right");
+  const [leftScale, setLeftScale] = useState(1);
+  const [rightScale, setRightScale] = useState(1);
 
   const fmtDate = (iso) => {
     const d = new Date(iso + "T12:00:00");
@@ -258,19 +210,29 @@ function CompareScreen({ allPhotos, initialA, initialB, onClose }) {
 
       {/* Photos */}
       <div className="flex flex-1 overflow-hidden">
-        <button className="flex-1 overflow-hidden relative bg-gray-50"
-          onClick={() => setActiveSide("left")}>
-          <img src={left.photo_data} alt="" className="w-full h-full object-contain" />
-          <div className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${activeSide === "left" ? "bg-brand-500 text-white" : "bg-black/30 text-white"}`}>BEFORE</div>
-          {activeSide === "left" && <div className="absolute inset-0 ring-2 ring-brand-500 ring-inset pointer-events-none" />}
-        </button>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-hidden relative bg-gray-50" onClick={() => setActiveSide("left")}>
+            <img src={left.photo_data} alt="" className="w-full h-full object-contain"
+              style={{ transform: `scale(${leftScale})`, transformOrigin: "center center", transition: "transform 0.2s" }} />
+            <div className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/40 text-white">BEFORE</div>
+          </div>
+          <div className="flex justify-center items-center gap-4 py-2 bg-white border-t border-gray-100 shrink-0">
+            <button onClick={() => setLeftScale(s => Math.max(1, +(s - 0.5).toFixed(1)))} className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xl font-bold leading-none">−</button>
+            <button onClick={() => setLeftScale(s => Math.min(4, +(s + 0.5).toFixed(1)))} className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xl font-bold leading-none">+</button>
+          </div>
+        </div>
         <div className="w-px bg-gray-200 shrink-0" />
-        <button className="flex-1 overflow-hidden relative bg-gray-50"
-          onClick={() => setActiveSide("right")}>
-          <img src={right.photo_data} alt="" className="w-full h-full object-contain" />
-          <div className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${activeSide === "right" ? "bg-brand-500 text-white" : "bg-black/30 text-white"}`}>AFTER</div>
-          {activeSide === "right" && <div className="absolute inset-0 ring-2 ring-brand-500 ring-inset pointer-events-none" />}
-        </button>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-hidden relative bg-gray-50" onClick={() => setActiveSide("right")}>
+            <img src={right.photo_data} alt="" className="w-full h-full object-contain"
+              style={{ transform: `scale(${rightScale})`, transformOrigin: "center center", transition: "transform 0.2s" }} />
+            <div className="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/40 text-white">AFTER</div>
+          </div>
+          <div className="flex justify-center items-center gap-4 py-2 bg-white border-t border-gray-100 shrink-0">
+            <button onClick={() => setRightScale(s => Math.max(1, +(s - 0.5).toFixed(1)))} className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xl font-bold leading-none">−</button>
+            <button onClick={() => setRightScale(s => Math.min(4, +(s + 0.5).toFixed(1)))} className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xl font-bold leading-none">+</button>
+          </div>
+        </div>
       </div>
 
       {/* Labels */}
@@ -304,7 +266,7 @@ function CompareScreen({ allPhotos, initialA, initialB, onClose }) {
                 className="shrink-0 relative rounded-lg overflow-hidden transition-all"
                 style={{ width: 64, height: 64, opacity: active ? 1 : 0.6 }}>
                 <img src={p.photo_data} alt="" className="w-full h-full object-cover" />
-                {active && <div className="absolute inset-0 ring-2 ring-brand-500 ring-inset rounded-lg" />}
+                {active && <div className="absolute inset-0 ring-2 ring-white ring-inset rounded-lg" />}
                 <div className="absolute bottom-0 inset-x-0 bg-black/50 py-0.5 text-center">
                   <p className="text-white text-[9px] font-bold leading-none">{p.weight_kg}kg</p>
                 </div>
