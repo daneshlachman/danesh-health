@@ -1,5 +1,4 @@
-# Danesh Health Dashboard
-
+# Health Dashboard - Semi Vibe Code Project
 Personal health dashboard PWA that centralizes data from Whoop, Garmin, Hevy and nutrition logging via Claude AI.
 
 ## Stack
