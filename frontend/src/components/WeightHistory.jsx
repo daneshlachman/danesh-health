@@ -402,18 +402,18 @@ export default function WeightHistory({ onBack }) {
                 <button onClick={() => setCompareA(null)} className="text-xs text-gray-400">Cancel</button>
               )}
             </div>
-            <div className="grid grid-cols-3 gap-px bg-gray-100">
+            <div className="flex gap-2 px-3 py-3 overflow-x-auto">
               {photos.map(r => {
                 const isA = compareA?.id === r.id;
                 return (
                   <button key={r.id} onClick={() => handlePhotoTap(r)}
-                    className="relative bg-white overflow-hidden block w-full"
-                    style={{ paddingBottom: "100%", height: 0 }}
+                    className="relative rounded-xl overflow-hidden shrink-0"
+                    style={{ width: 110, height: 110 }}
                   >
                     <img src={r.photo_data} alt=""
-                      className="absolute inset-0 w-full h-full object-cover" />
-                    {isA && <div className="absolute inset-0 bg-brand-500/25 ring-2 ring-brand-500 ring-inset" />}
-                    <div className="absolute bottom-0 inset-x-0 bg-black/50 py-1 px-1.5">
+                      className="w-full h-full object-cover" />
+                    {isA && <div className="absolute inset-0 bg-brand-500/25 ring-2 ring-brand-500 ring-inset rounded-xl" />}
+                    <div className="absolute bottom-0 inset-x-0 bg-black/50 py-1 px-1.5 rounded-b-xl">
                       <p className="text-white text-[10px] font-bold leading-none">{r.weight_kg} kg</p>
                       <p className="text-white/70 text-[9px] leading-none mt-0.5">
                         {(() => { const [,m,d] = r.date.split("-").map(Number); return `${d} ${MONTH_NAMES[m-1]}`; })()}
