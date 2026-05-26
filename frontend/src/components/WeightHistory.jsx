@@ -148,16 +148,75 @@ function WeightModal({ entry, onClose, onSaved }) {
 }
 
 function PhotoModal({ src, onClose }) {
+  const [scale, setScale] = useState(1);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const containerRef = useRef();
+  const state = useRef({ scale: 1, pos: { x: 0, y: 0 }, lastDist: null, panStart: null });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onStart = (e) => {
+      const s = state.current;
+      if (e.touches.length === 2) {
+        s.lastDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      } else if (e.touches.length === 1 && s.scale > 1) {
+        s.panStart = { x: e.touches[0].clientX - s.pos.x, y: e.touches[0].clientY - s.pos.y };
+      }
+    };
+    const onMove = (e) => {
+      e.preventDefault();
+      const s = state.current;
+      if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        if (s.lastDist) {
+          s.scale = Math.min(5, Math.max(1, s.scale * (dist / s.lastDist)));
+          setScale(s.scale);
+        }
+        s.lastDist = dist;
+      } else if (e.touches.length === 1 && s.scale > 1 && s.panStart) {
+        s.pos = { x: e.touches[0].clientX - s.panStart.x, y: e.touches[0].clientY - s.panStart.y };
+        setPos({ ...s.pos });
+      }
+    };
+    const onEnd = () => {
+      const s = state.current;
+      s.lastDist = null;
+      s.panStart = null;
+      if (s.scale <= 1.05) {
+        s.scale = 1; s.pos = { x: 0, y: 0 };
+        setScale(1); setPos({ x: 0, y: 0 });
+      }
+    };
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
-      <div className="absolute top-4 right-4 z-10">
-        <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/20 text-white text-xl">×</button>
-      </div>
-      <div className="w-full h-full overflow-auto flex items-center justify-center"
-           style={{ touchAction: "pan-x pan-y pinch-zoom" }}>
-        <img src={src} alt="" className="rounded-xl"
-             style={{ maxWidth: "100%", maxHeight: "100vh", touchAction: "pan-x pan-y pinch-zoom" }} />
-      </div>
+    <div ref={containerRef} className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+         style={{ touchAction: "none" }}>
+      <button onClick={onClose} className="absolute top-4 right-4 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/20 text-white text-xl">×</button>
+      <img src={src} alt=""
+        style={{
+          maxWidth: "100%", maxHeight: "100vh",
+          objectFit: "contain",
+          transform: `scale(${scale}) translate(${pos.x / scale}px, ${pos.y / scale}px)`,
+          transformOrigin: "center center",
+          transition: scale === 1 ? "transform 0.2s ease" : "none",
+          userSelect: "none", WebkitUserSelect: "none",
+        }} />
     </div>
   );
 }
@@ -193,7 +252,7 @@ function CompareScreen({ allPhotos, initialA, initialB, onClose }) {
       <div className="flex mx-4 rounded-2xl overflow-hidden shadow-sm shrink-0" style={{ height: "52vh" }}>
         <button className={`flex-1 overflow-hidden relative ${activeSide === "left" ? "ring-2 ring-brand-500 ring-inset" : ""}`}
           onClick={() => setActiveSide("left")}>
-          <img src={left.photo_data} alt="" className="w-full h-full object-cover" />
+          <img src={left.photo_data} alt="" className="w-full h-full object-contain" />
           {activeSide === "left" && (
             <div className="absolute top-2 left-2 bg-brand-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">BEFORE</div>
           )}
@@ -201,7 +260,7 @@ function CompareScreen({ allPhotos, initialA, initialB, onClose }) {
         <div className="w-0.5 bg-white shrink-0" />
         <button className={`flex-1 overflow-hidden relative ${activeSide === "right" ? "ring-2 ring-brand-500 ring-inset" : ""}`}
           onClick={() => setActiveSide("right")}>
-          <img src={right.photo_data} alt="" className="w-full h-full object-cover" />
+          <img src={right.photo_data} alt="" className="w-full h-full object-contain" />
           {activeSide === "right" && (
             <div className="absolute top-2 right-2 bg-brand-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">AFTER</div>
           )}
@@ -242,7 +301,7 @@ function CompareScreen({ allPhotos, initialA, initialB, onClose }) {
                 className={`shrink-0 relative rounded-xl overflow-hidden border-2 transition-all
                   ${isLeft ? "border-brand-500" : isRight ? "border-brand-500" : "border-transparent"}`}
                 style={{ width: 64, height: 64 }}>
-                <img src={p.photo_data} alt="" className="w-full h-full object-cover" />
+                <img src={p.photo_data} alt="" className="w-full h-full object-contain" />
                 {(isLeft || isRight) && (
                   <div className="absolute inset-0 bg-brand-500/20" />
                 )}
@@ -411,7 +470,7 @@ export default function WeightHistory({ onBack }) {
                     style={{ width: 110, height: 110 }}
                   >
                     <img src={r.photo_data} alt=""
-                      className="w-full h-full object-cover" />
+                      className="w-full h-full object-contain" />
                     {isA && <div className="absolute inset-0 bg-brand-500/25 ring-2 ring-brand-500 ring-inset rounded-xl" />}
                     <div className="absolute bottom-0 inset-x-0 bg-black/50 py-1 px-1.5 rounded-b-xl">
                       <p className="text-white text-[10px] font-bold leading-none">{r.weight_kg} kg</p>
