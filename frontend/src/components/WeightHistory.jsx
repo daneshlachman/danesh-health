@@ -49,7 +49,7 @@ function KPI({ label, value, sub, color }) {
   );
 }
 
-function compressImage(file, maxPx = 900, quality = 0.75) {
+function compressImage(file, maxPx = 1800, quality = 0.88) {
   return new Promise((resolve) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -309,56 +309,6 @@ export default function WeightHistory({ onBack }) {
         })()}
       </div>
 
-      {/* Photo gallery */}
-      {rows.some(r => r.photo_data) && (() => {
-        const photos = [...rows].reverse().filter(r => r.photo_data);
-        const handlePhotoTap = (r) => {
-          if (!compareA) {
-            setCompareA(r);
-          } else if (compareA.id === r.id) {
-            setCompareA(null);
-          } else {
-            setCompareB(r);
-          }
-        };
-        return (
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Photos</span>
-              {compareA && (
-                <span className="text-xs text-brand-500 font-medium">
-                  {compareA ? "Tap a second photo to compare" : ""}
-                </span>
-              )}
-              {compareA && (
-                <button onClick={() => setCompareA(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
-              )}
-            </div>
-            <div className="grid grid-cols-3 gap-0.5 p-0.5">
-              {photos.map(r => {
-                const isA = compareA?.id === r.id;
-                return (
-                  <button
-                    key={r.id}
-                    onClick={() => handlePhotoTap(r)}
-                    className="relative aspect-square overflow-hidden"
-                  >
-                    <img src={r.photo_data} alt="" className="w-full h-full object-cover" />
-                    <div className={`absolute inset-0 transition-colors ${isA ? "bg-brand-500/30 ring-2 ring-brand-500 ring-inset" : "bg-transparent"}`} />
-                    <div className="absolute bottom-0 inset-x-0 bg-black/40 py-1 px-1.5">
-                      <p className="text-white text-[10px] font-semibold leading-none">{r.weight_kg} kg</p>
-                      <p className="text-white/70 text-[9px] leading-none mt-0.5">
-                        {(() => { const [,m,d] = r.date.split("-").map(Number); return `${d} ${MONTH_NAMES[m-1]}`; })()}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-
       {/* Log list */}
       {rows.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -391,6 +341,49 @@ export default function WeightHistory({ onBack }) {
           </ul>
         </div>
       )}
+
+      {/* Photo gallery + compare */}
+      {(() => {
+        const photos = [...rows].reverse().filter(r => r.photo_data);
+        if (photos.length === 0) return null;
+        const handlePhotoTap = (r) => {
+          if (!compareA) { setCompareA(r); return; }
+          if (compareA.id === r.id) { setCompareA(null); return; }
+          setCompareB(r);
+        };
+        return (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                {compareA ? "Tap a second photo to compare" : "Photos · tap 2 to compare"}
+              </span>
+              {compareA && (
+                <button onClick={() => setCompareA(null)} className="text-xs text-gray-400">Cancel</button>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-px bg-gray-100">
+              {photos.map(r => {
+                const isA = compareA?.id === r.id;
+                return (
+                  <button key={r.id} onClick={() => handlePhotoTap(r)}
+                    className="relative bg-white overflow-hidden"
+                    style={{ aspectRatio: "1" }}
+                  >
+                    <img src={r.photo_data} alt="" className="w-full h-full object-cover" />
+                    {isA && <div className="absolute inset-0 bg-brand-500/25 ring-2 ring-brand-500 ring-inset" />}
+                    <div className="absolute bottom-0 inset-x-0 bg-black/50 py-1 px-1.5">
+                      <p className="text-white text-[10px] font-bold leading-none">{r.weight_kg} kg</p>
+                      <p className="text-white/70 text-[9px] leading-none mt-0.5">
+                        {(() => { const [,m,d] = r.date.split("-").map(Number); return `${d} ${MONTH_NAMES[m-1]}`; })()}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {modalEntry !== undefined && <WeightModal entry={modalEntry} onClose={() => setModalEntry(undefined)} onSaved={handleSaved} />}
       {photoSrc && <PhotoModal src={photoSrc} onClose={() => setPhotoSrc(null)} />}
