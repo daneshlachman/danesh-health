@@ -237,19 +237,6 @@ export default function CaloriesHistoryScreen({ navigation }: any) {
             {/* Weekly bar chart */}
             <WeeklyBarChart data={data} width={width - 32} />
 
-            {/* Line charts */}
-            {burnedData.length > 1 && (
-              <View style={card}>
-                <Text style={styles.chartTitle}>BURNED</Text>
-                <LineChart data={burnedData} width={width - 64} height={160} color={colors.brand[500]} avgLine={avgBurned ?? undefined} />
-              </View>
-            )}
-            {consumedData.length > 1 && (
-              <View style={card}>
-                <Text style={styles.chartTitle}>CONSUMED</Text>
-                <LineChart data={consumedData} width={width - 64} height={160} color={colors.status.green} avgLine={avgConsumed ?? undefined} />
-              </View>
-            )}
           </>
         )}
       </ScrollView>
