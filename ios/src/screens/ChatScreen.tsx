@@ -8,6 +8,15 @@ import DateNav from '../components/DateNav';
 
 type Message = { id: string; role: 'user' | 'assistant'; content: string };
 
+function cleanReply(text: string) {
+  return text
+    .replace(/```(?:json)?\s*\[[\s\S]*?"log_nutrition"[\s\S]*?\]\s*```/g, '')
+    .replace(/```(?:json)?\s*\{[\s\S]*?"log_nutrition"[\s\S]*?\}\s*```/g, '')
+    .replace(/\[[\s\S]*?"log_nutrition"[\s\S]*?\]/g, '')
+    .replace(/\{[^{}]*"log_nutrition"\s*:\s*true[^{}]*\}/g, '')
+    .trim();
+}
+
 export default function ChatScreen() {
   const [date, setDate] = useState(today());
   const [messages, setMessages] = useState<Message[]>([]);
@@ -62,7 +71,7 @@ export default function ChatScreen() {
               {msg.role === 'user' ? (
                 <Text style={styles.userText}>{msg.content}</Text>
               ) : (
-                <Markdown style={mdStyles}>{msg.content}</Markdown>
+                <Markdown style={mdStyles}>{cleanReply(msg.content)}</Markdown>
               )}
             </View>
           ))}
