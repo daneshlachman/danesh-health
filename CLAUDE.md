@@ -250,6 +250,9 @@ export const radius  = { sm: 8, md: 12, lg: 16, xl: 20, full: 9999 }
 - Dashboard heeft nog geen date picker kalender (alleen DateNav pijltjes)
 - WeightHistory foto upload nog niet gebouwd (modal heeft wel datum/gewicht veld)
 
+#### 🏗️ Architectuur verbeteringen (later oppakken)
+- **Workout deduplicatie hoort in de backend**: `/api/workouts` endpoint zou al gededupliceerde workouts moeten teruggeven. Nu zit de logica op 3 plekken: `workout_utils.py` (TDEE), `WorkoutLog.jsx` (PWA), `WorkoutsScreen.tsx` (iOS). Fix: `dedupe_workouts()` aanroepen in `backend/app/routes/workouts.py` vóór de return, dan kunnen alle clients de logica weggooien.
+
 #### 🔧 Dev setup
 - Werklaptop: `npx expo start` + `w` voor browser preview (geen tunnel mogelijk door firewall)
 - Thuis/privé laptop: `npx expo start` → scan QR in Expo Go app op iPhone
