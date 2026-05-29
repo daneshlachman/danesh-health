@@ -221,24 +221,30 @@ export const radius  = { sm: 8, md: 12, lg: 16, xl: 20, full: 9999 }
 
 ### Voortgang
 
-#### ✅ Opgezet
-- [ ] Expo project init
-- [ ] Navigatie structuur
-- [ ] API client (axios)
-- [ ] Design tokens
+#### ✅ Gebouwd & werkend (getest in browser)
+- Expo project init + navigatie structuur
+- API client (axios) → `ios/src/utils/api.ts`, URL: `https://danesh-health-backend.agreeableground-243793ea.northeurope.azurecontainerapps.io`
+- Design tokens → `ios/src/utils/colors.ts`
+- `RingChart` component → `ios/src/components/RingChart.tsx` (SVG circulaire progress)
+- `DateNav` component → `ios/src/components/DateNav.tsx` (herbruikbare datum nav)
+- **DashboardScreen** → Whoop rings (recovery/sleep/HRV/resting HR) + calorie kaarten (burned/consumed/balance)
+- **NutritionScreen** → calorie ring + 3 macro rings + maaltijdsecties met delete
+- **WorkoutsScreen** → maandkalender met emoji's, uitklapbare workout kaarten (Hevy sets/reps, Garmin stats), sync knop
+- **ChatScreen** → berichtenbubbles, datum nav, send input, loading state
 
-#### 🚧 In ontwikkeling
-- (nog niets)
+#### 📋 Nog te bouwen
+- WeightHistoryScreen (grafiek, foto galerij, compare screen, edit/delete)
+- WhoopHistoryScreen (recovery tab, sleep tab, charts)
+- FoodSearchModal in Nutrition (USDA + OpenFoodFacts zoeken)
+- Dashboard: date picker kalender, weight chart, sync knop
+- HealthKit integratie (workouts, stappen lezen)
+- Foto upload + compare in Weight
 
-#### 📋 Te bouwen
-- Dashboard
-- Nutrition
-- Workouts
-- Weight History
-- Whoop History
-- Chat
-- Foto upload + compare
-- HealthKit integratie (workouts, stappen)
+#### 🔧 Bekende issues / TODO
+- Dashboard heeft nog geen date picker kalender (alleen DateNav pijltjes)
+- Dashboard heeft nog geen weight chart
+- Nutrition heeft nog geen + knop om voedsel toe te voegen (alleen via Chat)
+- Testen op echte iPhone nog niet gedaan (werklaptop firewall blokkade) — thuis testen via `npx expo start`
 
 ---
 
