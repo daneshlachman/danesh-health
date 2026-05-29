@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_BASE = 'https://health-dashboard-backend.azurecontainerapps.io';
+export const API_BASE = 'https://danesh-health-backend.agreeableground-243793ea.northeurope.azurecontainerapps.io';
 
 export const api = axios.create({
   baseURL: API_BASE,
