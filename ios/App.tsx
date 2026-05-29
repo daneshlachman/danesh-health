@@ -5,12 +5,8 @@ import { Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { colors } from './src/utils/colors';
 import DashboardScreen from './src/screens/DashboardScreen';
-
-const PlaceholderScreen = ({ name }: { name: string }) => (
-  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
-    <Text style={{ color: colors.gray[400], fontSize: 16 }}>{name} — coming soon</Text>
-  </View>
-);
+import NutritionScreen from './src/screens/NutritionScreen';
+import ChatScreen from './src/screens/ChatScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -28,11 +24,14 @@ export default function App() {
         }}>
           <Tab.Screen name="Dashboard" component={DashboardScreen}
             options={{ tabBarIcon: () => <Text style={{ fontSize: 20 }}>📊</Text> }} />
-          <Tab.Screen name="Nutrition" component={() => <PlaceholderScreen name="Nutrition" />}
+          <Tab.Screen name="Nutrition" component={NutritionScreen}
             options={{ tabBarIcon: () => <Text style={{ fontSize: 20 }}>🥗</Text> }} />
-          <Tab.Screen name="Workouts" component={() => <PlaceholderScreen name="Workouts" />}
+          <Tab.Screen name="Workouts" component={() =>
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
+              <Text style={{ color: colors.gray[400] }}>Workouts — coming soon</Text>
+            </View>}
             options={{ tabBarIcon: () => <Text style={{ fontSize: 20 }}>🏋️</Text> }} />
-          <Tab.Screen name="Chat" component={() => <PlaceholderScreen name="Chat" />}
+          <Tab.Screen name="Chat" component={ChatScreen}
             options={{ tabBarIcon: () => <Text style={{ fontSize: 20 }}>💬</Text> }} />
         </Tab.Navigator>
       </NavigationContainer>
