@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Markdown from 'react-native-markdown-display';
 import { api, today } from '../utils/api';
 import { colors, spacing, radius } from '../utils/colors';
 import DateNav from '../components/DateNav';
@@ -58,9 +59,11 @@ export default function ChatScreen() {
           )}
           {messages.map(msg => (
             <View key={msg.id} style={[styles.bubble, msg.role === 'user' ? styles.userBubble : styles.assistantBubble]}>
-              <Text style={[styles.bubbleText, msg.role === 'user' ? styles.userText : styles.assistantText]}>
-                {msg.content}
-              </Text>
+              {msg.role === 'user' ? (
+                <Text style={styles.userText}>{msg.content}</Text>
+              ) : (
+                <Markdown style={mdStyles}>{msg.content}</Markdown>
+              )}
             </View>
           ))}
           {sending && (
@@ -113,4 +116,21 @@ const styles = StyleSheet.create({
                      paddingVertical: spacing.sm, justifyContent: 'center' },
   sendDisabled:    { opacity: 0.4 },
   sendText:        { color: colors.white, fontWeight: '600', fontSize: 15 },
+  userText:        { color: colors.white, fontSize: 14, lineHeight: 20 },
 });
+
+const mdStyles: any = {
+  body:          { color: colors.gray[900], fontSize: 14, lineHeight: 20 },
+  strong:        { fontWeight: '700' },
+  em:            { fontStyle: 'italic' },
+  code_inline:   { backgroundColor: colors.gray[100], borderRadius: 4, paddingHorizontal: 4, fontSize: 12, fontFamily: 'monospace' },
+  fence:         { backgroundColor: colors.gray[100], borderRadius: 8, padding: spacing.sm, marginVertical: spacing.xs },
+  code_block:    { backgroundColor: colors.gray[100], borderRadius: 8, padding: spacing.sm, fontSize: 12, fontFamily: 'monospace' },
+  table:         { borderWidth: 1, borderColor: colors.gray[200], borderRadius: 8, marginVertical: spacing.xs },
+  th:            { backgroundColor: colors.gray[50], padding: spacing.xs, fontWeight: '700', fontSize: 12 },
+  td:            { padding: spacing.xs, borderTopWidth: 1, borderTopColor: colors.gray[100], fontSize: 13 },
+  bullet_list:   { marginVertical: 2 },
+  ordered_list:  { marginVertical: 2 },
+  list_item:     { marginVertical: 1 },
+  paragraph:     { marginVertical: 2 },
+};
