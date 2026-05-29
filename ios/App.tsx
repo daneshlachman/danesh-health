@@ -1,15 +1,30 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Text, View } from 'react-native';
+import { Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { colors } from './src/utils/colors';
+
 import DashboardScreen from './src/screens/DashboardScreen';
+import WeightHistoryScreen from './src/screens/WeightHistoryScreen';
+import CaloriesHistoryScreen from './src/screens/CaloriesHistoryScreen';
 import NutritionScreen from './src/screens/NutritionScreen';
 import WorkoutsScreen from './src/screens/WorkoutsScreen';
 import ChatScreen from './src/screens/ChatScreen';
 
 const Tab = createBottomTabNavigator();
+const DashStack = createNativeStackNavigator();
+
+function DashboardStack() {
+  return (
+    <DashStack.Navigator screenOptions={{ headerShown: false }}>
+      <DashStack.Screen name="DashboardMain" component={DashboardScreen} />
+      <DashStack.Screen name="WeightHistory" component={WeightHistoryScreen} />
+      <DashStack.Screen name="CaloriesHistory" component={CaloriesHistoryScreen} />
+    </DashStack.Navigator>
+  );
+}
 
 export default function App() {
   return (
@@ -23,7 +38,7 @@ export default function App() {
           tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.gray[200] },
           tabBarLabelStyle: { fontSize: 11, fontWeight: '500' },
         }}>
-          <Tab.Screen name="Dashboard" component={DashboardScreen}
+          <Tab.Screen name="Dashboard" component={DashboardStack}
             options={{ tabBarIcon: () => <Text style={{ fontSize: 20 }}>📊</Text> }} />
           <Tab.Screen name="Nutrition" component={NutritionScreen}
             options={{ tabBarIcon: () => <Text style={{ fontSize: 20 }}>🥗</Text> }} />
