@@ -13,12 +13,31 @@ type Workout = {
   raw_json?: any;
 };
 
+const STRENGTH_NAMES = new Set(['weightlifting', 'functional fitness', 'crossfit', 'powerlifting', 'olympic weightlifting', 'strength training', 'bodybuilding']);
+const CYCLING_NAMES  = new Set(['cycling', 'commuting', 'mountain biking', 'road cycling', 'indoor cycling', 'bmx']);
+
+function isStrength(w: Workout) {
+  return STRENGTH_NAMES.has((w.raw_json?.sport_name || w.title || '').toLowerCase());
+}
+
+// Priority: Hevy > Garmin > Whoop (same as PWA)
+function dedupeWorkouts(workouts: Workout[]): Workout[] {
+  const hevyDates  = new Set(workouts.filter(w => w.source === 'hevy').map(w => w.date));
+  const garminDates = new Set(workouts.filter(w => w.source === 'garmin').map(w => w.date));
+  return workouts.filter(w => {
+    if (w.source === 'whoop' && isStrength(w) && (hevyDates.has(w.date) || garminDates.has(w.date))) return false;
+    if (w.source === 'whoop' && !isStrength(w) && garminDates.has(w.date)) return false;
+    if (w.source === 'garmin' && isStrength(w) && hevyDates.has(w.date)) return false;
+    return true;
+  });
+}
+
 function workoutEmoji(w: Workout) {
   const t = (w.title || '').toLowerCase();
-  const src = w.source;
-  if (src === 'hevy') return '💪';
-  if (t.includes('cycle') || t.includes('fiet') || t.includes('ride') || t.includes('bike')) return '🚲';
+  if (w.source === 'hevy') return '💪';
+  if (CYCLING_NAMES.has(t) || t.includes('cycl') || t.includes('fiet') || t.includes('ride') || t.includes('bike')) return '🚲';
   if (t.includes('run') || t.includes('loop')) return '🏃';
+  if (isStrength(w)) return '💪';
   return '🏋️';
 }
 
@@ -72,9 +91,11 @@ export default function WorkoutsScreen() {
   const days = getMonthDays(year, month);
   const todayStr = now.toISOString().slice(0, 10);
 
-  // workouts per date
+  // Dedupliceer: Hevy > Garmin > Whoop (zelfde logica als PWA)
+  const deduped = dedupeWorkouts(workouts);
+
   const byDate: Record<string, Workout[]> = {};
-  workouts.forEach(w => {
+  deduped.forEach(w => {
     if (!byDate[w.date]) byDate[w.date] = [];
     byDate[w.date].push(w);
   });
