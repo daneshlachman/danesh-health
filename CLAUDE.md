@@ -227,24 +227,32 @@ export const radius  = { sm: 8, md: 12, lg: 16, xl: 20, full: 9999 }
 - Design tokens → `ios/src/utils/colors.ts`
 - `RingChart` component → `ios/src/components/RingChart.tsx` (SVG circulaire progress)
 - `DateNav` component → `ios/src/components/DateNav.tsx` (herbruikbare datum nav)
-- **DashboardScreen** → Whoop rings (recovery/sleep/HRV/resting HR) + calorie kaarten (burned/consumed/balance)
+- `LineChart` component → `ios/src/components/LineChart.tsx` (custom SVG lijn chart)
+- **DashboardScreen** → Whoop rings + calorie kaarten (tappable → CaloriesHistory) + weight chart (tappable → WeightHistory)
 - **NutritionScreen** → calorie ring + 3 macro rings + maaltijdsecties met delete
 - **WorkoutsScreen** → maandkalender met emoji's, uitklapbare workout kaarten (Hevy sets/reps, Garmin stats), sync knop
-- **ChatScreen** → berichtenbubbles, datum nav, send input, loading state
+- **ChatScreen** → berichtenbubbles, markdown rendering, cleanReply (JSON blocks weggehaald), datum nav
+- **WeightHistoryScreen** → KPI grid, lijn chart met periode knoppen, foto galerij (horizontaal), entries list met edit/delete/add modal
+- **CaloriesHistoryScreen** → KPI cards, burned + consumed charts, heatmap kalender 30 dagen
+- Stack navigatie voor Dashboard tab (DashboardMain → WeightHistory / CaloriesHistory)
 
 #### 📋 Nog te bouwen
-- WeightHistoryScreen (grafiek, foto galerij, compare screen, edit/delete)
 - WhoopHistoryScreen (recovery tab, sleep tab, charts)
-- FoodSearchModal in Nutrition (USDA + OpenFoodFacts zoeken)
-- Dashboard: date picker kalender, weight chart, sync knop
+- FoodSearchModal in Nutrition (USDA + OpenFoodFacts zoeken, + knop per maaltijd)
 - HealthKit integratie (workouts, stappen lezen)
-- Foto upload + compare in Weight
+- Foto upload in WeightHistory (camera + galerij kiezen)
+- Compare screen in WeightHistory (2 foto's naast elkaar)
+- Whoop sync knop op Dashboard
 
 #### 🔧 Bekende issues / TODO
-- Dashboard heeft nog geen date picker kalender (alleen DateNav pijltjes)
-- Dashboard heeft nog geen weight chart
-- Nutrition heeft nog geen + knop om voedsel toe te voegen (alleen via Chat)
 - Testen op echte iPhone nog niet gedaan (werklaptop firewall blokkade) — thuis testen via `npx expo start`
+- Nutrition heeft nog geen + knop om voedsel toe te voegen (alleen via Chat)
+- Dashboard heeft nog geen date picker kalender (alleen DateNav pijltjes)
+- WeightHistory foto upload nog niet gebouwd (modal heeft wel datum/gewicht veld)
+
+#### 🔧 Dev setup
+- Werklaptop: `npx expo start` + `w` voor browser preview (geen tunnel mogelijk door firewall)
+- Thuis/privé laptop: `npx expo start` → scan QR in Expo Go app op iPhone
 
 ---
 
