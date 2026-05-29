@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { colors } from './src/utils/colors';
 import DashboardScreen from './src/screens/DashboardScreen';
 import NutritionScreen from './src/screens/NutritionScreen';
+import WorkoutsScreen from './src/screens/WorkoutsScreen';
 import ChatScreen from './src/screens/ChatScreen';
 
 const Tab = createBottomTabNavigator();
@@ -26,10 +27,7 @@ export default function App() {
             options={{ tabBarIcon: () => <Text style={{ fontSize: 20 }}>📊</Text> }} />
           <Tab.Screen name="Nutrition" component={NutritionScreen}
             options={{ tabBarIcon: () => <Text style={{ fontSize: 20 }}>🥗</Text> }} />
-          <Tab.Screen name="Workouts" component={() =>
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
-              <Text style={{ color: colors.gray[400] }}>Workouts — coming soon</Text>
-            </View>}
+          <Tab.Screen name="Workouts" component={WorkoutsScreen}
             options={{ tabBarIcon: () => <Text style={{ fontSize: 20 }}>🏋️</Text> }} />
           <Tab.Screen name="Chat" component={ChatScreen}
             options={{ tabBarIcon: () => <Text style={{ fontSize: 20 }}>💬</Text> }} />
